@@ -21,11 +21,12 @@ FUNCTION(SVNCO URL DIR)
         execute_process(COMMAND svn co ${URL} ${DESTINATION}
             RESULT_VARIABLE PROC_RES
             OUTPUT_VARIABLE PROC_STDOUT
-            ERROR_VARIABLE PROC_STDERR
+            ERROR_VARIABLE  PROC_STDERR
         )
-        message(STATUS "${PROC_RES}")
         message(STATUS "${PROC_STDOUT}")
-        message(STATUS "${PROC_STDERR}")
+        if(NOT PROC_RES EQUAL 0)
+            message(FATAL_ERROR "${PROC_STDERR}")
+        endif()
     endif()
 ENDFUNCTION()
 
