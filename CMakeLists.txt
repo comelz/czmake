@@ -23,7 +23,7 @@ FUNCTION(SVNCO URL DIR)
             OUTPUT_VARIABLE PROC_STDOUT
             ERROR_VARIABLE  PROC_STDERR
         )
-        message(STATUS "${PROC_STDOUT}")
+        message("${PROC_STDOUT}")
         if(NOT PROC_RES EQUAL 0)
             message(FATAL_ERROR "${PROC_STDERR}")
         endif()
