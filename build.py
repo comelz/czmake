@@ -55,6 +55,7 @@ def argv_parse():
                         help="load build configuration from FILE, default is 'build.json'")
     parser.add_argument("-C", "--clean-build", help="delete build directory at the beginning of the build",
                         action='store_true')
+    parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located")
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place")
     parser.add_argument("configuration", type=str, nargs='?', help="name of the build configuration to use")
@@ -68,6 +69,10 @@ def build():
     if not args.configuration_file:
         args.configuration_file = os.path.join(project_dir, 'build.json')
     build_cfg = json.load(open(args.configuration_file, 'rb'))
+    if args.list:
+        for cfg in sorted(build_cfg['configurations'].keys()):
+            print cfg
+        sys.exit(0)
 
     if not args.configuration:
         args.configuration = build_cfg['default']
