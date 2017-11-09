@@ -131,7 +131,7 @@ def build(default_configuration=None):
     build_dir = cfg['build-directory']
     if cfg['clean-build']:
         os.path.exists(build_dir) and rmtree(build_dir)
-    cfg['source-directory'] = os.path.abspath(cfg['source-directory'])
+    cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
     source_directory = cfg['source-directory']
 
     if getattr(args, 'print'):
