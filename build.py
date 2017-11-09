@@ -56,18 +56,22 @@ def argv_parse():
     parser.add_argument("-C", "--clean-build", help="delete build directory at the beginning of the build",
                         action='store_true')
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
+    parser.add_argument("-p", "--print", help="show build configuration", action='store_true')
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located")
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place")
-    parser.add_argument("configuration", type=str, nargs='?', help="name of the build configuration to use")
+    parser.add_argument("configuration", type=str, nargs='*', help="name of the build configuration to use")
     args = parser.parse_args()
     return args
 
+source_directory = None
+build_directory = None
+project_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-def build():
+
+def build(default_configuration=None):
     args = argv_parse()
-    project_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
     if not args.configuration_file:
-        args.configuration_file = os.path.join(project_dir, 'build.json')
+        args.configuration_file = os.path.join(project_directory, 'build.json')
     build_cfg = json.load(open(args.configuration_file, 'rb'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
@@ -75,32 +79,40 @@ def build():
         sys.exit(0)
 
     if not args.configuration:
-        args.configuration = build_cfg['default']
-    if args.configuration not in build_cfg['configurations']:
-        raise KeyError('Configuration "%s" does not exist in configuration provided by "%s"' %
-                       (args.configuration, args.configuration_file))
-
-    inheritance_list = [args.configuration]
-    inheritance_set = set(inheritance_list)
-    while True:
-        cfg_key = inheritance_list[-1]
-        parent = build_cfg['configurations'][cfg_key].get('inherits', None)
-        if parent:
-            if parent in inheritance_set:
-                raise ValueError('Inheritance loop detected with build configuration "%s"' % parent)
-            inheritance_list.append(parent)
-            inheritance_set.add(parent)
-        else:
-            break
+        args.configuration = default_configuration or build_cfg['default']
+    if isinstance(args.configuration, unicode):
+        args.configuration = [args.configuration]
+    configuration_list = []
+    configuration_set = set()
+    for configuration in args.configuration:
+        if configuration not in build_cfg['configurations']:
+            raise KeyError('Configuration "%s" does not exist in configuration provided by "%s"' %
+                           (args.configuration, args.configuration_file))
+        inheritance_list = [configuration]
+        inheritance_set = set(inheritance_list)
+        while True:
+            cfg_key = inheritance_list[-1]
+            parent = build_cfg['configurations'][cfg_key].get('inherits', None)
+            if parent:
+                if parent in configuration_set:
+                    raise ValueError('Inheritance loop detected with build configuration "%s"' % parent)
+                inheritance_list.append(parent)
+                inheritance_set.add(parent)
+            else:
+                break
+        for conf in reversed(inheritance_list):
+            if conf not in configuration_set:
+                configuration_set.add(parent)
+                configuration_list.append(conf)
     cfg = {
-        'build-directory': 'build-%s' % (args.configuration),
+        'build-directory': 'build-%s' % (args.configuration[0]),
         'clean-build': False,
         'source-directory': 'src',
         'build-command': 'make',
         'cmake-target': 'all'
     }
-    while len(inheritance_list):
-        update_dict(cfg, build_cfg['configurations'][inheritance_list.pop()])
+    for conf in configuration_list:
+        update_dict(cfg, build_cfg['configurations'][conf])
 
     if args.clean_build:
         cfg['clean-build'] = args.clean_build
@@ -115,11 +127,17 @@ def build():
             equal_char = option.find('=')
             key, value = option[:equal_char], option[equal_char + 1:]
             cfg['options'][key] = value
+    global build_directory, source_directory
     build_dir = cfg['build-directory']
     if cfg['clean-build']:
         os.path.exists(build_dir) and rmtree(build_dir)
-    pushd(project_dir)
+    pushd(project_directory)
     cfg['source-directory'] = os.path.abspath(cfg['source-directory'])
+    source_directory = cfg['source-directory']
+
+    if getattr(args, 'print'):
+        print cfg
+        sys.exit(0)
     mkdir(build_dir)
     pushd(build_dir)
     cmd = [args.cmake_exe]
