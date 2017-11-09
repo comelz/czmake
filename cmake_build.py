@@ -63,15 +63,25 @@ def argv_parse():
     args = parser.parse_args()
     return args
 
-source_directory = None
-build_directory = None
-project_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+_source_directory = None
+_build_directory = None
+_project_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
+
+
+def source_directory(): return _source_directory
+
+
+def build_directory(): return _build_directory
+
+
+def project_directory(): return _project_directory
 
 
 def build(default_configuration=None):
     args = argv_parse()
     if not args.configuration_file:
-        args.configuration_file = os.path.join(project_directory, 'build.json')
+        args.configuration_file = os.path.join(project_directory(), 'build.json')
     build_cfg = json.load(open(args.configuration_file, 'rb'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
@@ -127,18 +137,18 @@ def build(default_configuration=None):
             equal_char = option.find('=')
             key, value = option[:equal_char], option[equal_char + 1:]
             cfg['options'][key] = value
-    global build_directory, source_directory
-    build_dir = cfg['build-directory']
+    global _build_directory, _source_directory
+    _build_directory = cfg['build-directory']
     if cfg['clean-build']:
-        os.path.exists(build_dir) and rmtree(build_dir)
-    cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
-    source_directory = cfg['source-directory']
+        os.path.exists(build_directory()) and rmtree(build_directory())
+    cfg['source-directory'] = os.path.abspath(os.path.join(project_directory(), cfg['source-directory']))
+    _source_directory = cfg['source-directory']
 
     if getattr(args, 'print'):
         print cfg
         sys.exit(0)
-    mkdir(build_dir)
-    pushd(build_dir)
+    mkdir(build_directory())
+    pushd(build_directory())
     cmd = [args.cmake_exe]
 
     if 'generator' in cfg:

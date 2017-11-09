@@ -1,3 +1,3 @@
 #!/usr/bin/env python3
 
-from build import *
+from cmake_build import *
