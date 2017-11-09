@@ -131,7 +131,6 @@ def build(default_configuration=None):
     build_dir = cfg['build-directory']
     if cfg['clean-build']:
         os.path.exists(build_dir) and rmtree(build_dir)
-    pushd(project_directory)
     cfg['source-directory'] = os.path.abspath(cfg['source-directory'])
     source_directory = cfg['source-directory']
 
@@ -156,6 +155,5 @@ def build(default_configuration=None):
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
     cmd = [cfg['build-command'], cfg['cmake-target']]
     run(cmd, env=env)
-    popd()
     popd()
     return args.configuration, cfg
