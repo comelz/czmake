@@ -13,9 +13,9 @@ def _init():
     dir_stack = []
 
     def pushd(ndir):
+        dir_stack.append(os.getcwd())
         ndir = os.path.realpath(ndir)
         os.chdir(ndir)
-        dir_stack.append(ndir)
 
     def popd():
         odir = dir_stack.pop()
