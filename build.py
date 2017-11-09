@@ -145,8 +145,6 @@ def build(default_configuration=None):
         cmd += ['-G', '%s' % (cfg['generator'])]
     for key, value in cfg["options"].items():
         cmd.append('-D%s=%s' % (key, value))
-    for key, value in cfg["options"].items():
-        cmd.append('-D%s=%s' % (key, value))
     cmd.append(cfg['source-directory'])
 
     run(cmd)
