@@ -31,50 +31,46 @@ FUNCTION(SVNCO URL DIR)
 ENDFUNCTION()
 
 FUNCTION(MINIFY TARGET)
-    set(options STRIP UPX KEEP_ORIGINAL)
+    set(options STRIP UPX ALL KEEP_ORIGINAL)
     set(oneValueArgs "")
     set(multiValueArgs "")
 
     cmake_parse_arguments(MINIFY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    add_custom_command(OUTPUT ${TARGET}_unstripped_timestamp.txt
-        COMMAND cmake -E touch ${TARGET}_unstripped_timestamp.txt
-        COMMAND cmake -E copy_if_different $<TARGET_FILE:${TARGET}> $<TARGET_FILE:${TARGET}>.unstripped
-        DEPENDS $<TARGET_FILE:${TARGET}>
-        COMMENT "Archiving uncompressed ${TARGET}"
-    )
-    add_custom_command(OUTPUT ${TARGET}_stripped_timestamp.txt
-        COMMAND cmake -E touch ${TARGET}_stripped_timestamp.txt
-        COMMAND ${CMAKE_STRIP} -s $<TARGET_FILE:${TARGET}>
-        DEPENDS $<TARGET_FILE:${TARGET}>
-        COMMENT "Stripping ${TARGET}"
-    )
-    add_custom_command(OUTPUT ${TARGET}_compressed_timestamp.txt
-        COMMAND cmake -E touch ${TARGET}_compressed_timestamp.txt
-        COMMAND upx --best $<TARGET_FILE:${TARGET}>
-        DEPENDS $<TARGET_FILE:${TARGET}>
-        COMMENT "Compressing ${TARGET}"
-        )
     set(LAST_TARGET ${TARGET})
+    if(MINIFY_ALL)
+        set(MINIFY_ALL ALL)
+    endif()
     if(MINIFY_KEEP_ORIGINAL)
-        add_custom_target(${TARGET}_unstripped ALL
+        add_custom_command(OUTPUT ${TARGET}_unstripped_timestamp.txt
             DEPENDS ${LAST_TARGET}
-            SOURCES ${TARGET}_unstripped_timestamp.txt
+            COMMAND cmake -E touch ${TARGET}_unstripped_timestamp.txt
+            COMMAND cmake -E copy_if_different $<TARGET_FILE:${TARGET}> $<TARGET_FILE:${TARGET}>.unstripped
+            DEPENDS $<TARGET_FILE:${TARGET}>
+            COMMENT "Archiving unstripped ${TARGET}"
         )
+        add_custom_target(${TARGET}_unstripped ${MINIFY_ALL} SOURCES ${TARGET}_unstripped_timestamp.txt)
         set(LAST_TARGET ${TARGET}_unstripped)
     endif()
     if(MINIFY_STRIP)
-        add_custom_target(${TARGET}_stripped ALL
+        add_custom_command(OUTPUT ${TARGET}_stripped_timestamp.txt
             DEPENDS ${LAST_TARGET}
-            SOURCES ${TARGET}_stripped_timestamp.txt
+            COMMAND cmake -E touch ${TARGET}_stripped_timestamp.txt
+            COMMAND ${CMAKE_STRIP} -s $<TARGET_FILE:${TARGET}>
+            DEPENDS $<TARGET_FILE:${TARGET}>
+            COMMENT "Stripping ${TARGET}"
         )
+        add_custom_target(${TARGET}_stripped ${MINIFY_ALL} SOURCES ${TARGET}_stripped_timestamp.txt)
         set(LAST_TARGET ${TARGET}_stripped)
     endif()
     if(MINIFY_UPX)
-        add_custom_target(${TARGET}_compressed ALL
+        add_custom_command(OUTPUT ${TARGET}_compressed_timestamp.txt
             DEPENDS ${LAST_TARGET}
-            SOURCES ${TARGET}_compressed_timestamp.txt
+            COMMAND cmake -E touch ${TARGET}_compressed_timestamp.txt
+            COMMAND upx --best $<TARGET_FILE:${TARGET}>
+            DEPENDS $<TARGET_FILE:${TARGET}>
+            COMMENT "Compressing ${TARGET}"
         )
+        add_custom_target(${TARGET}_compressed ${MINIFY_ALL} SOURCES ${TARGET}_compressed_timestamp.txt)
         set(LAST_TARGET ${TARGET}_compressed)
     endif()
 ENDFUNCTION()

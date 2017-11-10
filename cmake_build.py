@@ -40,10 +40,11 @@ def mkcd(path): mkdir(path) and pushd(path)
 
 def update_dict(original, updated):
     for key, value in updated.items():
-        if key not in original or not isinstance(value, dict):
-            original[key] = value
-        else:
+        if key in original and isinstance(value, dict):
             update_dict(original[key], value)
+        else:
+            original[key] = value
+
 
 
 def argv_parse():
@@ -51,6 +52,7 @@ def argv_parse():
     parser.add_argument('-o' '--options', help='pass the argument to cmake prepended with -D', action='append')
     parser.add_argument("-G", "--generator", help="use specified cmake generator")
     parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", default='cmake')
+    parser.add_argument("-t", "--target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-c", "--configuration-file",
                         help="load build configuration from FILE, default is 'build.json'")
     parser.add_argument("-C", "--clean-build", help="delete build directory at the beginning of the build",
@@ -114,8 +116,13 @@ def build(default_configuration=None):
             if conf not in configuration_set:
                 configuration_set.add(parent)
                 configuration_list.append(conf)
+
+    bdirname = 'build-%s' % os.path.basename(project_directory())
+    for conf in args.configuration:
+        bdirname += '-' + conf
+
     cfg = {
-        'build-directory': 'build-%s' % (args.configuration[0]),
+        'build-directory': bdirname,
         'clean-build': False,
         'source-directory': 'src',
         'build-command': 'make',
@@ -132,6 +139,12 @@ def build(default_configuration=None):
         cfg['source-directory'] = args.source_directory
     if args.generator:
         cfg['generator'] = args.generator
+    if args.target:
+        cfg['cmake-target'] = args.target
+    if (isinstance(cfg['cmake-target'], unicode) or
+            isinstance(cfg['cmake-target'], str)):
+        cfg['cmake-target'] = [cfg['cmake-target']]
+
     if args.o__options:
         for option in args.o__options:
             equal_char = option.find('=')
@@ -161,7 +174,7 @@ def build(default_configuration=None):
     env = os.environ
     if 'MAKEFLAGS' not in os.environ:
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
-    cmd = [cfg['build-command'], cfg['cmake-target']]
+    cmd = [cfg['build-command']] + cfg['cmake-target']
     run(cmd, env=env)
     popd()
     return args.configuration, cfg
