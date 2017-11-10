@@ -39,6 +39,8 @@ FUNCTION(MINIFY TARGET)
     set(LAST_TARGET ${TARGET})
     if(MINIFY_ALL)
         set(MINIFY_ALL ALL)
+    else()
+        set(MINIFY_ALL "")
     endif()
     if(MINIFY_KEEP_ORIGINAL)
         add_custom_command(OUTPUT ${TARGET}_unstripped_timestamp.txt

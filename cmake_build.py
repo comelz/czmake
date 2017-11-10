@@ -45,6 +45,13 @@ def update_dict(original, updated):
         else:
             original[key] = value
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1', 'on'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'off'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def argv_parse():
@@ -55,8 +62,7 @@ def argv_parse():
     parser.add_argument("-t", "--target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-c", "--configuration-file",
                         help="load build configuration from FILE, default is 'build.json'")
-    parser.add_argument("-C", "--clean-build", help="delete build directory at the beginning of the build",
-                        action='store_true')
+    parser.add_argument("-C", "--clean-build", type=str2bool, help="choose whether or not delete the build directory at the beginning of the build", default=None)
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("-p", "--print", help="show build configuration", action='store_true')
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located")
@@ -131,7 +137,7 @@ def build(default_configuration=None):
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
 
-    if args.clean_build:
+    if args.clean_build is not None:
         cfg['clean-build'] = args.clean_build
     if args.build_directory:
         cfg['build-directory'] = args.build_directory
