@@ -158,7 +158,7 @@ def parse_cfg(default_configuration=None):
         print cfg
         sys.exit(0)
     else:
-        return args._configuration, cfg
+        return args.configuration, cfg
 
 
 def build(configuration):
