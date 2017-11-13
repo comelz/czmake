@@ -45,6 +45,7 @@ def update_dict(original, updated):
         else:
             original[key] = value
 
+
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1', 'on'):
         return True
@@ -58,11 +59,13 @@ def argv_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o' '--options', help='pass the argument to cmake prepended with -D', action='append')
     parser.add_argument("-G", "--generator", help="use specified cmake generator")
-    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", default='cmake')
-    parser.add_argument("-t", "--target", nargs='*', help="build specified cmake target(s)")
+    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable")
+    parser.add_argument("-t", "--cmake-target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-c", "--configuration-file",
                         help="load build configuration from FILE, default is 'build.json'")
-    parser.add_argument("-C", "--clean-build", type=str2bool, help="choose whether or not delete the build directory at the beginning of the build", default=None)
+    parser.add_argument("-C", "--clean-build", type=str2bool,
+                        help="choose whether or not delete the build directory at the beginning of the build",
+                        default=None)
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("-p", "--print", help="show build configuration", action='store_true')
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located")
@@ -72,24 +75,11 @@ def argv_parse():
     return args
 
 
-_source_directory = None
-_build_directory = None
-_project_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-
-def source_directory(): return _source_directory
-
-
-def build_directory(): return _build_directory
-
-
-def project_directory(): return _project_directory
-
-
-def build(default_configuration=None):
+def parse_cfg(default_configuration=None):
+    project_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
     args = argv_parse()
     if not args.configuration_file:
-        args.configuration_file = os.path.join(project_directory(), 'build.json')
+        args.configuration_file = os.path.join(project_directory, 'build.json')
     build_cfg = json.load(open(args.configuration_file, 'rb'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
@@ -98,7 +88,7 @@ def build(default_configuration=None):
 
     if not args.configuration:
         args.configuration = default_configuration or build_cfg['default']
-    if isinstance(args.configuration, unicode):
+    if isinstance(args.configuration, unicode) or isinstance(args.configuration, str):
         args.configuration = [args.configuration]
     configuration_list = []
     configuration_set = set()
@@ -123,7 +113,7 @@ def build(default_configuration=None):
                 configuration_set.add(parent)
                 configuration_list.append(conf)
 
-    bdirname = 'build-%s' % os.path.basename(project_directory())
+    bdirname = 'build-%s' % os.path.basename(project_directory)
     for conf in args.configuration:
         bdirname += '-' + conf
 
@@ -132,6 +122,7 @@ def build(default_configuration=None):
         'clean-build': False,
         'source-directory': 'src',
         'build-command': 'make',
+        'cmake-exe': 'cmake',
         'cmake-target': 'all'
     }
     for conf in configuration_list:
@@ -145,8 +136,10 @@ def build(default_configuration=None):
         cfg['source-directory'] = args.source_directory
     if args.generator:
         cfg['generator'] = args.generator
-    if args.target:
-        cfg['cmake-target'] = args.target
+    if args.cmake_exe:
+        cfg['cmake-exe'] = args.cmake_exe
+    if args.cmake_target:
+        cfg['cmake-target'] = args.cmake_target
     if (isinstance(cfg['cmake-target'], unicode) or
             isinstance(cfg['cmake-target'], str)):
         cfg['cmake-target'] = [cfg['cmake-target']]
@@ -156,19 +149,23 @@ def build(default_configuration=None):
             equal_char = option.find('=')
             key, value = option[:equal_char], option[equal_char + 1:]
             cfg['options'][key] = value
-    global _build_directory, _source_directory
-    _build_directory = cfg['build-directory']
     if cfg['clean-build']:
-        os.path.exists(build_directory()) and rmtree(build_directory())
-    cfg['source-directory'] = os.path.abspath(os.path.join(project_directory(), cfg['source-directory']))
-    _source_directory = cfg['source-directory']
+        os.path.exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
+    cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
+    cfg['project-directory'] = project_directory
 
     if getattr(args, 'print'):
         print cfg
         sys.exit(0)
-    mkdir(build_directory())
-    pushd(build_directory())
-    cmd = [args.cmake_exe]
+    else:
+        return cfg
+
+
+def build(configuration):
+    cfg = configuration
+    mkdir(cfg['build-directory'])
+    pushd(cfg['build-directory'])
+    cmd = [cfg['cmake-exe']]
 
     if 'generator' in cfg:
         cmd += ['-G', '%s' % (cfg['generator'])]
@@ -183,4 +180,3 @@ def build(default_configuration=None):
     cmd = [cfg['build-command']] + cfg['cmake-target']
     run(cmd, env=env)
     popd()
-    return args.configuration, cfg
