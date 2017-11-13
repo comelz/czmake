@@ -57,19 +57,19 @@ def str2bool(v):
 
 def argv_parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-o' '--options', help='pass the argument to cmake prepended with -D', action='append')
+    parser.add_argument('-o', '--options', help='pass the argument to cmake prepended with -D', action='append', metavar='KEY=VALUE')
     parser.add_argument("-G", "--generator", help="use specified cmake generator")
-    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable")
+    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
     parser.add_argument("-t", "--cmake-target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-c", "--configuration-file",
-                        help="load build configuration from FILE, default is 'build.json'")
+                        help="load build configuration from FILE, default is 'build.json'", metavar='FILE')
     parser.add_argument("-C", "--clean-build", type=str2bool,
                         help="choose whether or not delete the build directory at the beginning of the build",
-                        default=None)
+                        default=None, metavar='(true|false)')
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("-p", "--print", help="show build configuration", action='store_true')
-    parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located")
-    parser.add_argument("-b", "--build-directory", help="directory in which the build will take place")
+    parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located", metavar='DIR')
+    parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='DIR')
     parser.add_argument("configuration", type=str, nargs='*', help="name of the build configuration to use")
     args = parser.parse_args()
     return args
@@ -144,8 +144,8 @@ def parse_cfg(default_configuration=None):
             isinstance(cfg['cmake-target'], str)):
         cfg['cmake-target'] = [cfg['cmake-target']]
 
-    if args.o__options:
-        for option in args.o__options:
+    if args.options:
+        for option in args.options:
             equal_char = option.find('=')
             key, value = option[:equal_char], option[equal_char + 1:]
             cfg['options'][key] = value
