@@ -98,21 +98,23 @@ def parse_cfg(default_configuration=None):
                            (args.configuration, args.configuration_file))
         inheritance_list = [configuration]
         inheritance_set = set(inheritance_list)
+        configuration_inheritance_set = set()
         while True:
             cfg_key = inheritance_list[-1]
             parent = build_cfg['configurations'][cfg_key].get('inherits', None)
             if parent:
-                if parent in configuration_set:
+                if parent in configuration_inheritance_set:
                     raise ValueError('Inheritance loop detected with build configuration "%s"' % parent)
+                else:
+                    configuration_inheritance_set.add(parent)
                 inheritance_list.append(parent)
                 inheritance_set.add(parent)
             else:
                 break
         for conf in reversed(inheritance_list):
             if conf not in configuration_set:
-                configuration_set.add(parent)
+                configuration_set.add(conf)
                 configuration_list.append(conf)
-
     bdirname = 'build-%s' % os.path.basename(project_directory)
     for conf in args.configuration:
         bdirname += '-' + conf
