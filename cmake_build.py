@@ -149,8 +149,6 @@ def parse_cfg(default_configuration=None):
             equal_char = option.find('=')
             key, value = option[:equal_char], option[equal_char + 1:]
             cfg['options'][key] = value
-    if cfg['clean-build']:
-        os.path.exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
     cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
     cfg['project-directory'] = project_directory
 
@@ -163,6 +161,8 @@ def parse_cfg(default_configuration=None):
 
 def build(configuration):
     cfg = configuration
+    if cfg['clean-build']:
+        os.path.exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
     mkdir(cfg['build-directory'])
     pushd(cfg['build-directory'])
     cmd = [cfg['cmake-exe']]
