@@ -12,9 +12,9 @@ def run(*args, **kwargs):
 def _init():
     dir_stack = []
 
-    def pushd(ndir):
+    def pushd(*args):
         dir_stack.append(os.getcwd())
-        ndir = os.path.realpath(ndir)
+        ndir = os.path.realpath(os.path.join(*args))
         os.chdir(ndir)
 
     def popd():
