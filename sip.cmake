@@ -60,10 +60,12 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
 
     find_package(PythonInterp 2 REQUIRED)
     find_package(PythonLibs 2 REQUIRED)
-    IF(UNIX AND NOT APPLE)
-        set(CMAKE_MODULE_PATH "/usr/share/apps/cmake/modules/")
+    IF(UNIX)
+        find_package(SIP REQUIRED)
+        if(NOT APPLE)
+            set(CMAKE_MODULE_PATH "/usr/share/apps/cmake/modules/")
+        endif()
     endif()
-    find_package(SIP REQUIRED)
 
     STRING(REPLACE "." "/" _x ${ADD_SIP_MODULE_NAME})
     GET_FILENAME_COMPONENT(_parent_module_path ${_x}  PATH)
@@ -71,8 +73,9 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
 
     GET_FILENAME_COMPONENT(FPATH ${SIP_MODULE_FILE} REALPATH)
     file(RELATIVE_PATH _module_path ${CMAKE_SOURCE_DIR} ${FPATH})
+    GET_FILENAME_COMPONENT(_module_path ${_module_path} DIRECTORY)
 
-    FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${_module_path})    # Output goes in this dir.
+    FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/sip/${_module_path})    # Output goes in this dir.
 
     SET(_sip_includes)
     FOREACH (_inc ${ADD_SIP_MODULE_TARGET_INCLUDES})
@@ -112,7 +115,7 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
     ENDIF()
 
     target_include_directories(${ADD_SIP_MODULE_TARGET_NAME} PRIVATE ${SIP_INCLUDE_DIR})
-    TARGET_LINK_LIBRARIES(${ADD_SIP_MODULE_TARGET_NAME} ${ADD_SIP_MODULE_LIBS})
+    TARGET_LINK_LIBRARIES(${ADD_SIP_MODULE_TARGET_NAME} ${ADD_SIP_MODULE_LIBS} ${PYTHON_LIBRARIES})
     IF(APPLE)
         SET_TARGET_PROPERTIES(${ADD_SIP_MODULE_TARGET_NAME} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
     ENDIF(APPLE)
