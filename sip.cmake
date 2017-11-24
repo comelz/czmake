@@ -109,9 +109,9 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
     )
     # not sure if type MODULE could be uses anywhere, limit to cygwin for now
     IF(CYGWIN OR APPLE)
-        ADD_LIBRARY(${ADD_SIP_MODULE_TARGET_NAME} MODULE ${_sip_output_files} )
+        ADD_LIBRARY(${ADD_SIP_MODULE_TARGET_NAME} MODULE EXCLUDE_FROM_ALL ${_sip_output_files} )
     ELSE()
-        ADD_LIBRARY(${ADD_SIP_MODULE_TARGET_NAME} SHARED ${_sip_output_files})
+        ADD_LIBRARY(${ADD_SIP_MODULE_TARGET_NAME} SHARED EXCLUDE_FROM_ALL ${_sip_output_files})
     ENDIF()
 
     target_include_directories(${ADD_SIP_MODULE_TARGET_NAME} PRIVATE ${SIP_INCLUDE_DIR})
