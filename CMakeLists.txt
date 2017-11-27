@@ -1,3 +1,5 @@
+project(cmake_utils)
+
 FUNCTION(SVNCO URL DIR)
     set(options SOURCE)
     set(oneValueArgs "")

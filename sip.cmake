@@ -1,11 +1,5 @@
-# Macros for SIP
+# Function for SIP
 # ~~~~~~~~~~~~~~
-# Copyright (c) 2007, Simon Edwards <simon@simonzone.com>
-# Redistribution and use is allowed according to the terms of the BSD license.
-# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
-#
-# SIP website: http://www.riverbankcomputing.co.uk/sip/index.php
-#
 # This file defines the following macros:
 #
 # ADD_SIP_MODULE (MODULE_NAME MODULE_SIP [library1, libaray2, ...])
@@ -16,8 +10,8 @@
 #     which is typically a shared library, should be linked to. The built
 #     module will also be install into Python's site-packages directory.
 #
-# The behaviour of the ADD_SIP_PYTHON_MODULE macro can be controlled by a
-# number of variables:
+# The behaviour of the ADD_SIP_MODULE macro can be controlled by a
+# number of parameters:
 #
 # INCLUDES - List of directories which SIP will scan through when looking
 #     for included .sip files. (Corresponds to the -I option for SIP.)
@@ -34,7 +28,6 @@
 #
 # EXTRA_OPTIONS - Extra command line options which should be passed on to
 #     SIP.
-
 
 FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
     set(options "")
@@ -60,12 +53,8 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
 
     find_package(PythonInterp 2 REQUIRED)
     find_package(PythonLibs 2 REQUIRED)
-    IF(UNIX)
-        find_package(SIP REQUIRED)
-        if(NOT APPLE)
-            set(CMAKE_MODULE_PATH "/usr/share/apps/cmake/modules/")
-        endif()
-    endif()
+    set(CMAKE_MODULE_PATH ${cmake_utils_SOURCE_DIR})
+    find_package(SIP REQUIRED)
 
     STRING(REPLACE "." "/" _x ${ADD_SIP_MODULE_NAME})
     GET_FILENAME_COMPONENT(_parent_module_path ${_x}  PATH)
@@ -124,7 +113,4 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
     IF(WIN32)
       SET_TARGET_PROPERTIES(${ADD_SIP_MODULE_TARGET_NAME} PROPERTIES SUFFIX ".pyd")
     ENDIF (WIN32)
-
-    INSTALL(TARGETS ${ADD_SIP_MODULE_TARGET_NAME} DESTINATION "${PYTHON_SITE_PACKAGES_DIR}/${_parent_module_path}")
-
 ENDFUNCTION()
