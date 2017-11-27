@@ -96,6 +96,7 @@ FUNCTION(ADD_SIP_MODULE SIP_MODULE_FILE)
     ADD_CUSTOM_COMMAND(
         OUTPUT ${_sip_output_files}
         COMMENT ${message}
+        COMMAND ${CMAKE_COMMAND} -E touch ${_sip_output_files}
         COMMAND ${SIP_EXECUTABLE} ${_sip_tags} ${_sip_x} ${ADD_SIP_MODULE_EXTRA_OPTIONS} -j ${ADD_SIP_MODULE_TARGET_SPLIT} -c ${CMAKE_CURRENT_BINARY_DIR}/${_module_path} ${_sip_includes} ${SIP_MODULE_FILE}
         DEPENDS ${SIP_MODULE_FILE} ${ADD_SIP_MODULE_SOURCES}
     )
