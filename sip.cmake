@@ -73,7 +73,6 @@ FUNCTION(ADD_SIP_MODULE TARGET_NAME SIP_MODULE_FILE)
     list(REMOVE_DUPLICATES DDEPS)
     set_property(DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS ${DDEPS})
     SET(SIP_BUILD_FILE ${SIP_BUILD_DIR}/${FNAME}.sbf)
-    message("sadfds")
     execute_process(
         COMMAND ${SIP_EXECUTABLE} ${_sip_tags} ${_sip_x} ${ADD_SIP_MODULE_EXTRA_OPTIONS} ${_sip_includes} -b ${SIP_BUILD_FILE} ${SIP_MODULE_FILE}
     )
