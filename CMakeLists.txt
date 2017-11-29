@@ -108,4 +108,5 @@ FUNCTION(PYFIND)
     endif()
 ENDFUNCTION()
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/library.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/sip.cmake)
