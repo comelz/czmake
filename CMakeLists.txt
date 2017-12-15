@@ -70,7 +70,7 @@ FUNCTION(MINIFY TARGET)
         add_custom_command(OUTPUT ${TARGET}_compressed_timestamp.txt
             DEPENDS ${LAST_TARGET}
             COMMAND cmake -E touch ${TARGET}_compressed_timestamp.txt
-            COMMAND upx --best $<TARGET_FILE:${TARGET}>
+            COMMAND upx $<TARGET_FILE:${TARGET}>
             DEPENDS $<TARGET_FILE:${TARGET}>
             COMMENT "Compressing ${TARGET}"
         )
