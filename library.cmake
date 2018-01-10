@@ -27,7 +27,7 @@ FUNCTION(CREATE_TARGET NAME)
             list(APPEND TYPES SHARED)
         endif()
         if(NOT CREATE_TARGET_STATIC AND NOT CREATE_TARGET_SHARED)
-            list(APPEND TYPES SHARED STATIC)
+            list(APPEND TYPES STATIC SHARED)
         endif()
         foreach(TYPE ${TYPES})
             string(TOLOWER ${TYPE} SUFFIX)
@@ -58,11 +58,13 @@ FUNCTION(CREATE_TARGET NAME)
             endif()
             if(CREATE_TARGET_INSTALL)
                 export(TARGETS ${LIBRARY_TARGET} FILE ${LIBRARY_TARGET}Config.cmake)
+                install(EXPORT ${LIBRARY_TARGET}Config DESTINATION share/cmake/${LIBRARY_TARGET})
                 install(TARGETS ${LIBRARY_TARGET} EXPORT ${LIBRARY_TARGET}Config
+                    INCLUDES DESTINATION include
                     ARCHIVE  DESTINATION lib
                     LIBRARY  DESTINATION lib
-                    RUNTIME  DESTINATION bin)
-                install(EXPORT ${LIBRARY_TARGET}Config DESTINATION cmake/${LIBRARY_TARGET})
+                    RUNTIME  DESTINATION bin
+                    ${EXCLUDE})
             endif()
         endforeach()
         if(TYPES)
@@ -100,6 +102,7 @@ FUNCTION(CREATE_TARGET NAME)
         if(CREATE_TARGET_PROPERTIES)
             set_target_properties(${TGT} PROPERTIES ${CREATE_TARGET_PROPERTIES})
         endif()
+        set_target_properties(${TGT} PROPERTIES OUTPUT_NAME ${NAME})
     endforeach()
 ENDFUNCTION()
 
