@@ -108,5 +108,37 @@ FUNCTION(PYFIND)
     endif()
 ENDFUNCTION()
 
+FUNCTION(EMBED)
+    set(OPTIONS ENCRYPT)
+    set(ONE_VALUE_ARGS ID NAMESPACE DESTINATION)
+    set(MULTI_VALUE_ARGS BLOBS)
+    cmake_parse_arguments(EMBED "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN} )
+    get_filename_component(OUTDIR ${EMBED_DESTINATION} DIRECTORY)
+    set(${ID}_HEADER  ${EMBED_DESTINATION}.h PARENT_SCOPE)
+    if(EMBED_NAMESPACE)
+        set(EMBED_NAMESPACE "-n ${EMBED_NAMESPACE}")
+        set(OUTPUT ${EMBED_DESTINATION}.cpp)
+    else()
+        set(OUTPUT ${EMBED_DESTINATION}.c)
+    endif()
+    if(EMBED_ENCRYPT)
+        set(ENCRYPT "-e")
+    endif()
+    set(${EMBED_ID}_OUTPUT ${OUTPUT} PARENT_SCOPE)
+    set(DEPS)
+    FOREACH(BLOBPAIR ${EMBED_BLOBS})
+        STRING(REGEX MATCH "(=|^)([^=]+$)" RESULT ${BLOBPAIR})
+        list(APPEND DEPS ${CMAKE_MATCH_2})
+    ENDFOREACH()
+    set(B2CPP ${cmake_utils_SOURCE_DIR}/bin/b2cpp.py)
+    add_custom_command(
+        OUTPUT ${OUTPUT}
+        DEPENDS ${DEPS}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTDIR}
+        COMMAND ${PYTHON_EXECUTABLE} ${B2CPP} ${ENCRYPT} -o ${EMBED_DESTINATION} ${EMBED_NAMESPACE} ${EMBED_BLOBS}
+        COMMENT "Generating ${OUTPUT}"
+        )
+ENDFUNCTION()
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/library.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/sip.cmake)
