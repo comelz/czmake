@@ -1,5 +1,14 @@
 project(cmake_utils)
 
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0")
+    cmake_policy(VERSION 3.9)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    if(NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        message(WARNING "interprocedural optimization is not supported with this compiler")
+    endif()
+endif()
+
 FUNCTION(SVNCO URL DIR)
     set(options SOURCE)
     set(oneValueArgs "")
