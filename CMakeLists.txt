@@ -1,6 +1,6 @@
 project(cmake_utils)
 
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.9.0")
+if(${CMAKE_VERSION} VERSION_GREATER "3.9")
     cmake_policy(VERSION 3.9)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
