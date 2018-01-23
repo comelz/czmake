@@ -1,18 +1,32 @@
+FUNCTION(IPO_CHECK)
+    if(${CMAKE_VERSION} VERSION_GREATER "3.9")
+        if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+            include(CheckIPOSupported)
+            check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+            if(NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+                message(WARNING "interprocedural optimization is not supported with this compiler")
+            endif()
+            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${CMAKE_INTERPROCEDURAL_OPTIMIZATION} CACHE BOOL "Use the link time optimization feature of the compiler")
+        endif()
+    endif()
+ENDFUNCTION()
+
 FUNCTION(CREATE_TARGET NAME)
     set(options LIB EXE WIN32 ALL STATIC SHARED INSTALL)
     set(oneValueArgs "")
-    set(multiValueArgs 
+    set(multiValueArgs
         PRIVATE_DEFS
         PUBLIC_DEFS
         PRIVATE_INCLUDES
         PUBLIC_INCLUDES
-        PRIVATE_LIBS  
+        PRIVATE_LIBS
         PUBLIC_LIBS
         PROPERTIES
         SOURCES
     )
 
     cmake_parse_arguments(CREATE_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    IPO_CHECK()
 
     if(NOT CREATE_TARGET_ALL)
         set(EXCLUDE EXCLUDE_FROM_ALL)
@@ -120,18 +134,18 @@ ENDFUNCTION()
 FUNCTION(CREATE_PYLIBRARY NAME)
     set(options STATIC SHARED)
     set(oneValueArgs "")
-    set(multiValueArgs 
+    set(multiValueArgs
         PRIVATE_DEFS
         PUBLIC_DEFS
         PRIVATE_INCLUDES
         PUBLIC_INCLUDES
-        PRIVATE_LIBS  
+        PRIVATE_LIBS
         PUBLIC_LIBS
         PROPERTIES
         SOURCES
     )
     cmake_parse_arguments(CREATE_PYLIBRARY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    
+
     CREATE_LIBRARY(${NAME} ${ARGN})
 
     set(TYPE "")
