@@ -1,13 +1,13 @@
 FUNCTION(IPO_CHECK)
-    if(${CMAKE_VERSION} VERSION_GREATER "3.9")
-        if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-            include(CheckIPOSupported)
-            check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-            if(NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-                message(WARNING "interprocedural optimization is not supported with this compiler")
-            endif()
-            set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${CMAKE_INTERPROCEDURAL_OPTIMIZATION} CACHE BOOL "Use the link time optimization feature of the compiler")
+    if(${CMAKE_VERSION} VERSION_GREATER "3.9" AND
+            NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
+            AND (CMAKE_BUILD_TYPE STREQUAL Release OR CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo))
+        include(CheckIPOSupported)
+        check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+        if(NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+            message(WARNING "interprocedural optimization is not supported with this compiler")
         endif()
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${CMAKE_INTERPROCEDURAL_OPTIMIZATION} CACHE BOOL "Use the link time optimization feature of the compiler")
     endif()
 ENDFUNCTION()
 
