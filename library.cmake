@@ -12,7 +12,7 @@ FUNCTION(IPO_CHECK)
 ENDFUNCTION()
 
 FUNCTION(CREATE_TARGET NAME)
-    set(options LIB EXE WIN32 ALL STATIC SHARED INSTALL)
+    set(options LIB EXE WIN32 ALL STATIC SHARED INSTALL STRIP KEEP_UNSTRIPPED)
     set(oneValueArgs "")
     set(multiValueArgs
         PRIVATE_DEFS
@@ -119,6 +119,17 @@ FUNCTION(CREATE_TARGET NAME)
         set_target_properties(${TGT} PROPERTIES OUTPUT_NAME ${NAME})
         if(CMAKE_INTERPROCEDURAL_OPTIMIZATION)
             set_target_properties(${TGT} PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
+        endif()
+        if(CREATE_TARGET_STRIP)
+            if(CREATE_TARGET_KEEP_UNSTRIPPED)
+                set(KEEP_UNSTRIPPED_COMMAND COMMAND cmake -E copy_if_different $<TARGET_FILE:${TGT}> $<TARGET_FILE:${TGT}>.unstripped)
+            endif()
+            add_custom_command(TARGET ${TGT} POST_BUILD
+                ${KEEP_UNSTRIPPED_COMMAND}
+                COMMAND ${CMAKE_STRIP} -s $<TARGET_FILE:${TGT}>
+                DEPENDS $<TARGET_FILE:${TGT}>
+                COMMENT "Stripping ${TGT}"
+            )
         endif()
     endforeach()
 ENDFUNCTION()
