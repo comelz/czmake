@@ -7,12 +7,6 @@ FUNCTION(SVNCO URL DIR)
 
     cmake_parse_arguments(SVNCO "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    string(FIND ${URL} "^" POSITION)
-    if(POSITION EQUAL 0)
-        string(SUBSTRING ${URL} 1 -1 PATH)
-        set(URL "svn+ssh://svn.comelz.com/svn/${PATH}")
-    endif()
-
     if(SVNCO_SOURCE)
         set(DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/${DIR})
     else()
@@ -24,6 +18,7 @@ FUNCTION(SVNCO URL DIR)
             RESULT_VARIABLE PROC_RES
             OUTPUT_VARIABLE PROC_STDOUT
             ERROR_VARIABLE  PROC_STDERR
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
         message("${PROC_STDOUT}")
         if(NOT PROC_RES EQUAL 0)
