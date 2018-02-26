@@ -12,7 +12,7 @@ FUNCTION(IPO_CHECK)
 ENDFUNCTION()
 
 FUNCTION(CREATE_TARGET NAME)
-    set(options LIB EXE WIN32 ALL STATIC SHARED INSTALL STRIP KEEP_UNSTRIPPED)
+    set(options LIB EXE WIN32 ALL STATIC SHARED INSTALL STRIP KEEP_UNSTRIPPED DISABLE_THREADS)
     set(oneValueArgs "")
     set(multiValueArgs
         PRIVATE_DEFS
@@ -138,6 +138,9 @@ FUNCTION(CREATE_TARGET NAME)
                 DEPENDS $<TARGET_FILE:${TGT}>
                 COMMENT "Stripping ${TGT}"
             )
+        endif()
+        if(NOT CREATE_TARGET_DISABLE_THREADS)
+            TARGET_LINK_LIBRARIES(${TGT} PUBLIC Threads::Threads)
         endif()
     endforeach()
 ENDFUNCTION()
