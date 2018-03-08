@@ -2,41 +2,11 @@ import os, json, argparse, sys
 from multiprocessing import cpu_count
 from shutil import rmtree
 from subprocess import check_call
-
+from utils import pushd, popd, mkcd, mkdir, str2bool
 
 def run(*args, **kwargs):
     print(' '.join(args[0]))
     return check_call(*args, **kwargs)
-
-
-def _init():
-    dir_stack = []
-
-    def pushd(*args):
-        dir_stack.append(os.getcwd())
-        ndir = os.path.realpath(os.path.join(*args))
-        os.chdir(ndir)
-
-    def popd():
-        odir = dir_stack.pop()
-        os.chdir(odir)
-
-    return pushd, popd
-
-
-pushd, popd = _init()
-
-
-def mkdir(path):
-    try:
-        os.makedirs(path)
-    except OSError as e:
-        if not os.path.exists(path):
-            raise e
-
-
-def mkcd(path): mkdir(path) and pushd(path)
-
 
 def update_dict(original, updated):
     for key, value in updated.items():
@@ -44,16 +14,6 @@ def update_dict(original, updated):
             update_dict(original[key], value)
         else:
             original[key] = value
-
-
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1', 'on'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'off'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
 
 def argv_parse():
     parser = argparse.ArgumentParser()
@@ -83,7 +43,7 @@ def parse_cfg(default_configuration=None):
     build_cfg = json.load(open(args.configuration_file, 'rb'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
-            print cfg
+            print(cfg)
         sys.exit(0)
 
     if not args.configuration:
@@ -155,7 +115,7 @@ def parse_cfg(default_configuration=None):
     cfg['project-directory'] = project_directory
 
     if getattr(args, 'print'):
-        print cfg
+        print(cfg)
         sys.exit(0)
     else:
         return args.configuration, cfg
