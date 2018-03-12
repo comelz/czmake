@@ -140,7 +140,7 @@ while len(node_stack):
     external_file = join(module_dir, 'externals.json')
     if exists(join(module_dir, 'externals.json')):
         try:
-            conf = json.load(open(external_file, 'rb'))
+            conf = json.load(open(external_file, 'r'))
             for module_name, module_object in conf["depends"].items():
                 if module_name in modules:
                     node = Node(modules[module_name])
