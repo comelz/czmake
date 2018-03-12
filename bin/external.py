@@ -3,9 +3,10 @@
 from os import getcwd
 from os.path import join, exists, abspath
 from utils import pushd, popd, mkcd, mkdir, str2bool
-from urllib.parse import urlparse
 from subprocess import check_call as run, check_output
 from shutil import rmtree
+from checkout import download, SCM
+from urllib.parse import urlparse
 import argparse
 
 import json
@@ -23,80 +24,23 @@ def argv_parse():
 
 args = argv_parse()
 
-
-def parse_fragment(fragment):
-    res = {}
-    for equality in fragment.split():
-        index = equality.find('=')
-        key = equality[:index]
-        value = equality[index + 1:]
-        res[key] = value
-    return res
-
-
 class Module:
     repodir = args.repo_dir
-
-    class SCM:
-        git = object()
-        svn = object()
 
     def __init__(self, name=None, uri=None):
         self.name = name
 
         if uri:
             uri = urlparse(uri)
-
-            if uri.scheme.startswith('git'):
-                self.scm = Module.SCM.git
-            elif uri.scheme.startswith('svn'):
-                self.scm = Module.SCM.svn
+            self.scm = SCM.fromURI(uri)
         self.uri = uri
         self.cmake_options = {}
         self.dependencies = set()
-        self.directory = join(Module.repodir, name)
+        self.directory = join(Module.repodir, name) if name else args.source_dir
+        self.condition = {}
 
     def __hash__(self):
         return self.name.__hash__()
-
-    def download(self):
-        if exists(self.directory):
-            return
-        if self.scm == Module.SCM.git:
-            ref = 'origin/HEAD'
-            if self.uri.fragment:
-                fragment = Module.parse_fragment(self.uri.fragment).get('rev', 'HEAD')
-                if 'commit' in fragment:
-                    ref = fragment['commit']
-                elif 'tag' in fragment:
-                    ref = fragment['tag']
-                elif 'branch' in fragment:
-                    ref = 'origin/%s' % fragment['branch']
-
-            url = self.uri._replace(fragment='').geturl()
-            if exists(self.directory):
-                current_url = check_output(['git', 'config', '--get', 'remote.origin.url'])
-                if url != current_url:
-                    raise ValueError("Current git repository in '%s' is a clone of '%s' instead of '%s'" %
-                                     (abspath(self.directory)), current_url, url)
-                else:
-                    run(['git', 'fetch', '--all', '-p'])
-
-            else:
-                print("Downloading '%s' from %s" % (self.name, url))
-                run(['git', 'clone', '--mirror', url, self.directory])
-            pushd(self.directory)
-            run(['git', 'checkout', '--force', '--no-track', '-B', 'cmake_utils', ref])
-            popd()
-        elif self.scm == Module.SCM.svn:
-            ref = (self.uri.fragment and parse_fragment(self.uri.fragment).get('rev', 'HEAD')) or 'HEAD'
-            url = self.uri._replace(fragment='').geturl()
-            if exists(self.directory):
-                print("Downloading '%s' from %s" % (self.name, url))
-                run(['svn', 'update', '-r', ref, self.directory])
-            else:
-                run(['svn', 'checkout', '-r', ref, url, self.directory])
-
 
 class Node:
     def __init__(self, obj=None):
@@ -132,21 +76,20 @@ source_dir = args.source_dir
 mkcd(Module.repodir)
 modules = {}
 
-root = Node()
+root = Node(Module())
 node_stack = [root]
 while len(node_stack):
     parent_node = node_stack.pop()
-    module_dir = join(Module.repodir, parent_node.obj.name) if parent_node.obj else source_dir
-    external_file = join(module_dir, 'externals.json')
-    if exists(join(module_dir, 'externals.json')):
+    externals_file = join(parent_node.obj.directory, 'externals.json')
+    if exists(externals_file):
         try:
-            conf = json.load(open(external_file, 'r'))
+            conf = json.load(open(externals_file, 'r'))
             for module_name, module_object in conf["depends"].items():
                 if module_name in modules:
                     node = Node(modules[module_name])
                 else:
                     module = Module(module_name, module_object['uri'])
-                    module.download()
+                    download(module.scm, module.uri, module.directory)
                     node = Node(module)
                     modules[module_name] = module
                 if "options" in module_object:
@@ -166,7 +109,7 @@ while len(node_stack):
                                     additional_module = modules[depname]
                                 elif 'uri' in depobject:
                                     additional_module = Module(depname, depobject['uri'])
-                                    additional_module.download()
+                                    download(additional_module.scm, additional_module.uri, additional_module.directory)
                                 else:
                                     raise ValueError("Cannot retrieve module '%s'" % depname)
                                 node = Node(additional_module)
@@ -195,7 +138,7 @@ cmake_file = open(join(Module.repodir, 'CMakeLists.txt'), 'w')
 
 def processModule(node):
     module = node.obj
-    if module and module not in processed_modules:
+    if module.name and module not in processed_modules:
         for key, value in module.cmake_options.items():
             if isinstance(value, bool):
                 kind = "BOOL"
