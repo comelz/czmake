@@ -1,9 +1,6 @@
 import os.path
 import subprocess
 
-from urllib.parse import urlparse
-
-
 def mkdir(path):
     try:
         os.makedirs(path)
