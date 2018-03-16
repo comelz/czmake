@@ -1,6 +1,16 @@
 import sys
 import os
 import subprocess
+import argparse
+from os.path import exists
+
+def argv_parse():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-O', '--c-output', help='path where to write the version.h header file', metavar='HEADER_FILE')
+    parser.add_argument('-o', '--output', help='path where to write the VERSION file', metavar='VERSION_FILE')
+    parser.add_argument('project_dir', type=str, nargs=1, help='path to the SVN checkout', metavar='PROJECT_DIRECTORY')
+    args = parser.parse_args()
+    return args
 
 def getVersion(path):
     tag = None
@@ -13,46 +23,29 @@ def getVersion(path):
 
     if tag:
         if tag != ver:
-            ver = ver + "-T" + tag
+            ver = ver + "T" + tag
     else:
         subver = subprocess.check_output(["svnversion", path]).decode("utf-8").strip().replace(":", "-")
-        ver = ver + "-pre-r" + subver
+        ver = ver + "pre-r" + subver
     return ver
 
-os.putenv("LANG", "C")
+def write_if_different(outfile, content):
+    if not exists(outfile) or open(outfile, 'r').read() != content:
+        open(outfile, 'w').write(content)
 
-new = """#ifndef FULL_VER
+if __name__ == '__main__':
+    args = argv_parse()
+    ver = getVersion(args.project_dir[0])
+    os.putenv("LANG", "C")
+    if args.c_output:
+        new = """
+#ifndef FULL_VER
 #define FULL_VER "%(ver)s"
 #endif
+        """
+        write_if_different(args.c_output, new % {"ver" : ver})
 
-"""
+    if args.output:
+        write_if_different(args.output, ver)
+    print(ver)
 
-basepath = os.path.dirname(sys.argv[1])
-ver = getVersion(basepath)
-
-outpath = sys.argv[2]
-
-current = ''
-try:
-    f = open(outpath)
-    current = f.read()
-    f.close()
-except IOError:
-    pass
-
-new = new % {"ver" : ver}
-if current != new:
-    f = open(outpath, "w")
-    f.write(new % {"ver" : ver})
-    f.close()
-    #cpack_config_path = sys.argv[1] + '/CPackConfig.cmake'
-    #f = open(cpack_config_path, 'r')
-    #cpackfile = f.read().split('\n')
-    #f.close()
-    #f = open(cpack_config_path, 'w')
-    #for line in cpackfile:
-    #    if line.startswith('SET(CPACK_PACKAGE_VERSION'):
-    #        line = 'SET(CPACK_PACKAGE_VERSION "%s")' % ver
-    #    f.write(line + '\n')
-    #f.close()
-    
