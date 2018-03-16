@@ -12,6 +12,7 @@ FUNCTION(CREATE_TARGET NAME)
         PUBLIC_COMPILE_OPTIONS
         PROPERTIES
         SOURCES
+        DEPENDS
     )
 
     cmake_parse_arguments(CREATE_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -124,6 +125,9 @@ FUNCTION(CREATE_TARGET NAME)
                 DEPENDS $<TARGET_FILE:${TGT}>
                 COMMENT "Stripping ${TGT}"
             )
+        endif()
+        if(CREATE_TARGET_DEPENDS)
+            add_dependencies(${TGT} ${CREATE_TARGET_DEPENDS})
         endif()
     endforeach()
 ENDFUNCTION()
