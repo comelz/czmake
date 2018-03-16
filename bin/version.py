@@ -8,6 +8,7 @@ def argv_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('-O', '--c-output', help='path where to write the version.h header file', metavar='HEADER_FILE')
     parser.add_argument('-o', '--output', help='path where to write the VERSION file', metavar='VERSION_FILE')
+    parser.add_argument('-s', '--silent', action='store_true', help='do not print version number on stdout')
     parser.add_argument('project_dir', type=str, nargs=1, help='path to the SVN checkout', metavar='PROJECT_DIRECTORY')
     args = parser.parse_args()
     return args
@@ -47,5 +48,6 @@ if __name__ == '__main__':
 
     if args.output:
         write_if_different(args.output, ver)
-    print(ver)
+    if not args.silent:
+        sys.stdout.write(ver)
 
