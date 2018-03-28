@@ -81,8 +81,6 @@ def download(scm, uri, destination):
             if current_url != url and not local_edit:
                 run(['svn', 'switch', url, destination])
             else:
-                print(f'current_url: {current_url}')
-                print(f'url: {url}')
                 raise ValueError("Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
 
             print("Downloading '%s' from %s" % (name, url))
