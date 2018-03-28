@@ -19,13 +19,21 @@ class SCM:
             raise ValueError("Unrecognized SCM for url '%s'", uri.geturl())
 
 
-def download(scm, uri, destination, branch=None, tag=None, revision=None, commit=None):
+def download(scm, uri, destination):
     name = basename(destination)
+    def parse_fragment(fragment):
+        res = {}
+        for equality in fragment.split():
+            index = equality.find('=')
+            key = equality[:index]
+            value = equality[index + 1:]
+            res[key] = value
+        return res
 
     if scm == SCM.git:
-        ref = commit or tag or 'origin/%s' % (branch) or 'origin/HEAD'
-
+        ref = 'origin/HEAD'
         if uri.fragment:
+            fragment = parse_fragment(uri.fragment).get('rev', 'HEAD')
             if 'commit' in fragment:
                 ref = fragment['commit']
             elif 'tag' in fragment:
