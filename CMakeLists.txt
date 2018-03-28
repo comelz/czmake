@@ -8,6 +8,7 @@ endif()
 
 set(CZMAKE_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/czmake CACHE PATH "")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    install(FILES czmake.cmake DESTINATION cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules)
     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/czmake DESTINATION cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules
         PATTERN CMakeLists.txt EXCLUDE
         PATTERN .svn EXCLUDE
@@ -28,6 +29,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
     INCLUDE(CPack)
 else()
-    include(${CMAKE_CURRENT_SOURCE_DIR}/czmake/index.cmake)
+    include(czmake.cmake)
 endif()
 
