@@ -70,6 +70,7 @@ def download(scm, uri, destination):
             url = url._replace(join(url.path, 'tags', tag))
         url = url.geturl()
         if exists(destination):
+            out = check_output(['svn', 'st', '-q', destination]).decode('utf-8')
             local_edit = len(check_output(['svn', 'st', '-q', destination]).decode('utf-8').split('\n')) > 1
             prefix = 'URL: '
             for line in check_output(['svn', 'info', destination]).decode('utf-8').split('\n'):
@@ -78,10 +79,11 @@ def download(scm, uri, destination):
                     break
             else:
                 raise ValueError("Cannot parse URL of local checkout in '%s'" % destination)
-            if current_url != url and not local_edit:
-                run(['svn', 'switch', url, destination])
-            else:
-                raise ValueError("Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
+            if current_url != url:
+                if not local_edit:
+                    run(['svn', 'switch', url, destination])
+                else:
+                    raise ValueError("Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
 
             print("Downloading '%s' from %s" % (name, url))
             run(['svn', 'update', '-r', ref, destination])
