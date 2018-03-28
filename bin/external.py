@@ -6,21 +6,22 @@ from utils import pushd, popd, mkcd, mkdir, str2bool
 from subprocess import check_call as run, check_output
 from shutil import rmtree
 from checkout import download, SCM
+from cmake_cache import read_cache
 from urllib.parse import urlparse
-import argparse
 
+import argparse
 import json
 import sys
-
 
 def argv_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--source-dir", help="specify source directory", metavar='DIR')
+    parser.add_argument("-b", "--build-dir", help="specify build directory", metavar='DIR')
     parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies", metavar='DIR')
-    parser.add_argument("-c", "--clean", help="clean repository directory", action='store_true')
+    parser.add_argument("-c", "--cache-file", help="specify cmake cache file", metavar='CACHE_FILE')
+    parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
     args = parser.parse_args()
     return args
-
 
 args = argv_parse()
 
@@ -76,6 +77,8 @@ source_dir = args.source_dir
 mkcd(Module.repodir)
 modules = {}
 
+cache_file = args.cache_file
+cache = (exists(cache_file) and read_cache(open(cache_file, 'r')) or {})
 root = Node(Module())
 node_stack = [root]
 while len(node_stack):
@@ -95,7 +98,7 @@ while len(node_stack):
                 if "options" in module_object:
                     for key, value in module_object['options'].items():
                         if key not in module.cmake_options:
-                            module.cmake_options[key] = value
+                            module.cmake_options[key] = cache.get(key, value)
                 parent_node.children.add(node)
                 node_stack.append(node)
             if 'optdepends' in conf:
@@ -103,13 +106,16 @@ while len(node_stack):
                 for cmake_option, values in conf['optdepends'].items():
                     for depobj in values:
                         if (cmake_option in module.cmake_options and
-                                    module.cmake_options[cmake_option] == depobj['value']):
+                                module.cmake_options[cmake_option] == depobj['value']) or (
+                                cmake_option in cache and cache.get(cmake_option, depobj['value']) == depobj['value']
+                                ):
                             for depname, depobject in depobj['deps'].items():
                                 if depname in modules:
                                     additional_module = modules[depname]
                                 elif 'uri' in depobject:
                                     additional_module = Module(depname, depobject['uri'])
                                     download(additional_module.scm, additional_module.uri, additional_module.directory)
+                                    modules[depname] = additional_module
                                 else:
                                     raise ValueError("Cannot retrieve module '%s'" % depname)
                                 node = Node(additional_module)
@@ -120,7 +126,7 @@ while len(node_stack):
                                 parent_node.children.add(node)
                                 node_stack.append(node)
         except json.JSONDecodeError:
-            sys.stderr.write('Error parsing "%s"\n' % external_file)
+            sys.stderr.write('Error parsing "%s"\n' % externals_file)
             raise
 
 
@@ -135,7 +141,6 @@ walkTree(root, build_module_tree)
 processed_modules = set()
 cmake_file = open(join(Module.repodir, 'CMakeLists.txt'), 'w')
 
-
 def processModule(node):
     module = node.obj
     if module.name and module not in processed_modules:
@@ -145,9 +150,8 @@ def processModule(node):
                 value = 'ON' if value else 'OFF'
             else:
                 kind = "STRING"
-            cmake_file.write('set(%s %s CACHE %s "")\n' % (key, value, kind))
+            cmake_file.write('set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind))
         cmake_file.write('add_subdirectory(%s)\n' % module.name)
         processed_modules.add(module)
-
 
 walkTree(root, processModule)

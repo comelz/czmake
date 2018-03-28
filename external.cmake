@@ -1,4 +1,3 @@
-
 FUNCTION(INIT_EXTERNALS)
     set(options "")
     set(oneValueArgs REPODIR)
@@ -11,7 +10,13 @@ FUNCTION(INIT_EXTERNALS)
         set(INIT_EXTERNALS_REPODIR lib)
     endif()
     set(ENV{PYTHONPATH} ${cmake_utils_SOURCE_DIR})
-    execute_process(COMMAND ${PYTHON_EXECUTABLE_3} ${EXTERNALS_SCRIPT} -s ${CMAKE_CURRENT_SOURCE_DIR} -r ${INIT_EXTERNALS_REPODIR}
+    set(CACHE_FILE "${INIT_EXTERNALS_REPODIR}/tmpcache.txt")
+    get_cmake_property(_variableNames CACHE_VARIABLES)
+    list (SORT _variableNames)
+    foreach (_variableName ${_variableNames})
+        file(APPEND "${CACHE_FILE}" "${_variableName} = ${${_variableName}}\n")
+    endforeach()
+    execute_process(COMMAND ${PYTHON_EXECUTABLE_3} ${EXTERNALS_SCRIPT} -b ${CMAKE_BINARY_DIR} -s ${CMAKE_CURRENT_SOURCE_DIR} -r ${INIT_EXTERNALS_REPODIR} -c ${CACHE_FILE}
         RESULT_VARIABLE PROC_RES
         OUTPUT_VARIABLE PROC_STDOUT
         ERROR_VARIABLE  PROC_STDERR

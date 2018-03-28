@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-from os.path import exists, abspath, basename
+from os.path import exists, abspath, basename, join
 from subprocess import check_output, check_call as run
 from utils import pushd, popd
 import sys
@@ -19,21 +19,13 @@ class SCM:
             raise ValueError("Unrecognized SCM for url '%s'", uri.geturl())
 
 
-def download(scm, uri, destination):
+def download(scm, uri, destination, branch=None, tag=None, revision=None, commit=None):
     name = basename(destination)
-    def parse_fragment(fragment):
-        res = {}
-        for equality in fragment.split():
-            index = equality.find('=')
-            key = equality[:index]
-            value = equality[index + 1:]
-            res[key] = value
-        return res
 
     if scm == SCM.git:
-        ref = 'origin/HEAD'
+        ref = commit or tag or 'origin/%s' % (branch) or 'origin/HEAD'
+
         if uri.fragment:
-            fragment = parse_fragment(uri.fragment).get('rev', 'HEAD')
             if 'commit' in fragment:
                 ref = fragment['commit']
             elif 'tag' in fragment:
@@ -57,14 +49,38 @@ def download(scm, uri, destination):
         run(['git', 'checkout', '--force', '--no-track', '-B', 'cmake_utils', ref])
         popd()
     elif scm == SCM.svn:
-        ref = (uri.fragment and parse_fragment(uri.fragment).get('rev', 'HEAD')) or 'HEAD'
-        url = uri._replace(fragment='').geturl()
+        fragment = (uri.fragment and parse_fragment(uri.fragment)) or {}
+        ref = fragment.get('rev', 'HEAD')
+        branch = fragment.get('branch', None)
+        tag = fragment.get('tag', None)
+        url = uri._replace(fragment='')
+        if (branch or tag) and url.path.endswith('trunk'):
+            url = url._replace(url.path[:-5])
+        if branch:
+            url = url._replace(join(url.path, 'branches', branch))
+        elif tag:
+            url = url._replace(join(url.path, 'tags', tag))
+        url = url.geturl()
         if exists(destination):
+            local_edit = len(check_output(['svn', 'st', '-q', destination]).decode('utf-8').split('\n')) > 1
+            prefix = 'URL: '
+            for line in check_output(['svn', 'info', destination]).decode('utf-8').split('\n'):
+                if line.startswith(prefix):
+                    current_url = line[len(prefix):]
+                    break
+            else:
+                raise ValueError("Cannot parse URL of local checkout in '%s'" % destination)
+            if current_url != url and not local_edit:
+                run(['svn', 'switch', url, destination])
+            else:
+                print(f'current_url: {current_url}')
+                print(f'url: {url}')
+                raise ValueError("Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
+
             print("Downloading '%s' from %s" % (name, url))
             run(['svn', 'update', '-r', ref, destination])
         else:
             run(['svn', 'checkout', '-r', ref, url, destination])
-
 
 if __name__ == '__main__':
     uri = urlparse(sys.argv[1])
