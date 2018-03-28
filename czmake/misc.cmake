@@ -1,0 +1,161 @@
+FUNCTION(PYFIND)
+    set(options REQUIRED LIB)
+    set(oneValueArgs SUFFIX)
+    set(multiValueArgs VERSIONS)
+    cmake_parse_arguments(PYFIND "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(PYFIND_SUFFIX)
+        set(RESULT PYTHON_EXECUTABLE_${PYFIND_SUFFIX})
+    else()
+        set(RESULT PYTHON_EXECUTABLE)
+    endif()
+    if(NOT DEFINED ${RESULT})
+        unset(PYTHONINTERP_FOUND CACHE)
+        unset(PYTHON_EXECUTABLE CACHE)
+        unset(PYTHON_VERSION_STRING CACHE)
+        unset(PYTHON_VERSION_MAJOR CACHE)
+        unset(PYTHON_VERSION_MINOR CACHE)
+        unset(PYTHON_VERSION_PATCH CACHE)
+
+        set(Python_ADDITIONAL_VERSIONS ${PYFIND_VERSIONS})
+        find_package(PythonInterp)
+        if(PYTHON_EXECUTABLE)
+            set(${RESULT} ${PYTHON_EXECUTABLE} CACHE STRING "")
+        endif()
+
+        set(index 0)
+        list(LENGTH PYFIND_VERSIONS limit)
+        WHILE((NOT ${RESULT} OR ${RESULT} STREQUAL "PYTHON_EXECUTABLE-NOT-FOUND") AND index LESS limit)
+            list(GET PYFIND_VERSIONS index version)
+            find_program(${RESULT} NAMES python${version} PATHS /usr/bin NO_CMAKE_FIND_ROOT_PATH)
+            MATH(EXPR index "${index}+1")
+        ENDWHILE()
+        if(NOT ${RESULT})
+            if(PYFIND_REQUIRED)
+                message(FATAL_ERROR "Python interpreter not found")
+            else()
+                set(PYTHONINTERP_FOUND OFF CACHE BOOL "" FORCE)
+            endif()
+        else()
+            set(PYTHONINTERP_FOUND ON CACHE BOOL "" FORCE)
+        endif()
+    endif()
+
+    if(PYFIND_SUFFIX)
+        set(RESULT PYTHON_LIB_${PYFIND_SUFFIX})
+    else()
+        set(RESULT PYTHON_LIB)
+    endif()
+    if(PYFIND_LIB)
+        if(NOT DEFINED ${RESULT})
+            unset(PYTHON_INCLUDE_PATH CACHE)
+            unset(PYTHONLIBS_FOUND CACHE)
+            unset(PYTHON_LIBRARY CACHE)
+            unset(PYTHON_LIBRARIES CACHE)
+            unset(PYTHON_INCLUDE_DIR CACHE)
+            unset(PYTHON_INCLUDE_DIRS CACHE)
+            unset(PYTHON_DEBUG_LIBRARIES CACHE)
+            unset(PYTHONLIBS_VERSION_STRING CACHE)
+            unset(PythonLib_DIR CACHE)
+            set(Python_ADDITIONAL_VERSIONS ${PYFIND_VERSIONS})
+            find_package(PythonLibs)
+            if(PYTHON_LIBRARIES)
+                set(${RESULT} ${PYTHON_LIBRARIES} CACHE STRING "")
+                if(PYFIND_SUFFIX)
+                    set(PYTHON_INCLUDE_${PYFIND_SUFFIX} ${PYTHON_INCLUDE_DIRS} CACHE STRING "")
+                else()
+                    set(PYTHON_INCLUDE ${PYTHON_INCLUDE_DIRS} CACHE STRING "")
+                endif()
+            endif()
+            if(NOT ${RESULT})
+                if(PYFIND_REQUIRED)
+                    message(FATAL_ERROR "Python library not found")
+                else()
+                    set(PYTHONLIB_FOUND OFF CACHE BOOL "" FORCE)
+                endif()
+            else()
+                set(PYTHONILIB_FOUND ON CACHE BOOL "" FORCE)
+            endif()
+        endif()
+    endif()
+ENDFUNCTION()
+
+FUNCTION(MINIFY TARGET)
+    set(options STRIP UPX ALL KEEP_ORIGINAL)
+    set(oneValueArgs "")
+    set(multiValueArgs "")
+
+    cmake_parse_arguments(MINIFY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(LAST_TARGET ${TARGET})
+    if(MINIFY_ALL)
+        set(MINIFY_ALL ALL)
+    else()
+        set(MINIFY_ALL "")
+    endif()
+    if(MINIFY_KEEP_ORIGINAL)
+        add_custom_command(OUTPUT ${TARGET}_unstripped_timestamp.txt
+            DEPENDS ${LAST_TARGET}
+            COMMAND cmake -E touch ${TARGET}_unstripped_timestamp.txt
+            COMMAND cmake -E copy_if_different $<TARGET_FILE:${TARGET}> $<TARGET_FILE:${TARGET}>.unstripped
+            DEPENDS $<TARGET_FILE:${TARGET}>
+            COMMENT "Archiving unstripped ${TARGET}"
+        )
+        add_custom_target(${TARGET}_unstripped ${MINIFY_ALL} SOURCES ${TARGET}_unstripped_timestamp.txt)
+        set(LAST_TARGET ${TARGET}_unstripped)
+    endif()
+    if(MINIFY_STRIP)
+        add_custom_command(OUTPUT ${TARGET}_stripped_timestamp.txt
+            DEPENDS ${LAST_TARGET}
+            COMMAND cmake -E touch ${TARGET}_stripped_timestamp.txt
+            COMMAND ${CMAKE_STRIP} -s $<TARGET_FILE:${TARGET}>
+            DEPENDS $<TARGET_FILE:${TARGET}>
+            COMMENT "Stripping ${TARGET}"
+        )
+        add_custom_target(${TARGET}_stripped ${MINIFY_ALL} SOURCES ${TARGET}_stripped_timestamp.txt)
+        set(LAST_TARGET ${TARGET}_stripped)
+    endif()
+    if(MINIFY_UPX)
+        add_custom_command(OUTPUT ${TARGET}_compressed_timestamp.txt
+            DEPENDS ${LAST_TARGET}
+            COMMAND cmake -E touch ${TARGET}_compressed_timestamp.txt
+            COMMAND upx $<TARGET_FILE:${TARGET}>
+            DEPENDS $<TARGET_FILE:${TARGET}>
+            COMMENT "Compressing ${TARGET}"
+        )
+        add_custom_target(${TARGET}_compressed ${MINIFY_ALL} SOURCES ${TARGET}_compressed_timestamp.txt)
+        set(LAST_TARGET ${TARGET}_compressed)
+    endif()
+ENDFUNCTION()
+
+FUNCTION(EMBED)
+    set(OPTIONS ENCRYPT)
+    set(ONE_VALUE_ARGS ID NAMESPACE DESTINATION)
+    set(MULTI_VALUE_ARGS BLOBS)
+    cmake_parse_arguments(EMBED "${OPTIONS}" "${ONE_VALUE_ARGS}" "${MULTI_VALUE_ARGS}" ${ARGN} )
+    get_filename_component(OUTDIR ${EMBED_DESTINATION} DIRECTORY)
+    set(${ID}_HEADER  ${EMBED_DESTINATION}.h PARENT_SCOPE)
+    if(EMBED_NAMESPACE)
+        set(EMBED_NAMESPACE "-n ${EMBED_NAMESPACE}")
+        set(OUTPUT ${EMBED_DESTINATION}.cpp)
+    else()
+        set(OUTPUT ${EMBED_DESTINATION}.c)
+    endif()
+    if(EMBED_ENCRYPT)
+        set(ENCRYPT "-e")
+    endif()
+    set(${EMBED_ID}_OUTPUT ${OUTPUT} PARENT_SCOPE)
+    set(DEPS)
+    FOREACH(BLOBPAIR ${EMBED_BLOBS})
+        STRING(REGEX MATCH "(=|^)([^=]+$)" RESULT ${BLOBPAIR})
+        list(APPEND DEPS ${CMAKE_MATCH_2})
+    ENDFOREACH()
+    set(B2CPP ${CZMAKE_ROOT_DIR}/bin/b2cpp.py)
+    PYFIND(VERSIONS 2 SUFFIX 2 REQUIRED)
+    add_custom_command(
+        OUTPUT ${OUTPUT}
+        DEPENDS ${DEPS}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTDIR}
+        COMMAND ${PYTHON_EXECUTABLE_2} ${B2CPP} ${ENCRYPT} -o ${EMBED_DESTINATION} ${EMBED_NAMESPACE} ${EMBED_BLOBS}
+        COMMENT "Generating ${OUTPUT}"
+    )
+ENDFUNCTION()
