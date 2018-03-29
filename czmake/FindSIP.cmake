@@ -30,8 +30,7 @@ IF(SIP_VERSION)
   # Already in cache, be silent
   SET(SIP_FOUND TRUE)
 ELSE()
-  FIND_FILE(_find_sip_py FindSIP.py PATHS ${CMAKE_MODULE_PATH})
-
+  set(_find_sip_py ${CMAKE_CURRENT_LIST_DIR}/FindSIP.py)
   PYFIND(VERSIONS 2 SUFFIX 2 REQUIRED)
   EXECUTE_PROCESS(COMMAND ${PYTHON_EXECUTABLE_2} ${_find_sip_py} OUTPUT_VARIABLE sip_config)
   IF(sip_config)

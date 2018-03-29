@@ -1,7 +1,7 @@
 # Function for SIP
 # ~~~~~~~~~~~~~~
 #
-# ADD_SIP_MODULE (MODULE_NAME MODULE_SIP [library1, libaray2, ...])
+# ADD_SIP_MODULE (MODULE_NAME MODULE_SIP [library1, library2, ...])
 #     Specifies a SIP file to be built into a Python module and installed.
 #     MODULE_NAME is the name of Python module including any path name. (e.g.
 #     os.sys, Foo.bar etc). MODULE_SIP the path and filename of the .sip file
@@ -39,7 +39,7 @@ FUNCTION(ADD_SIP_MODULE TARGET_NAME SIP_MODULE_FILE)
 
     find_package(PythonInterp 2 REQUIRED)
     find_package(PythonLibs 2 REQUIRED)
-    list(APPEND CMAKE_MODULE_PATH ${CZMAKE_ROOT_PATH})
+    message("CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
     find_package(SIP REQUIRED)
 
     GET_FILENAME_COMPONENT(FPATH ${SIP_MODULE_FILE} REALPATH)
