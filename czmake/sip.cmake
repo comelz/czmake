@@ -37,9 +37,10 @@ FUNCTION(ADD_SIP_MODULE TARGET_NAME SIP_MODULE_FILE)
         list(APPEND ADD_SIP_MODULE_SIP_INCLUDES /usr/share/sip)
     endif()
 
+
     find_package(PythonInterp 2 REQUIRED)
     find_package(PythonLibs 2 REQUIRED)
-    message("CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+    list(APPEND CMAKE_MODULE_PATH ${CZMAKE_ROOT_PATH})
     find_package(SIP REQUIRED)
 
     GET_FILENAME_COMPONENT(FPATH ${SIP_MODULE_FILE} REALPATH)
