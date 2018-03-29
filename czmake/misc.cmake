@@ -149,7 +149,7 @@ FUNCTION(EMBED)
         STRING(REGEX MATCH "(=|^)([^=]+$)" RESULT ${BLOBPAIR})
         list(APPEND DEPS ${CMAKE_MATCH_2})
     ENDFOREACH()
-    set(B2CPP ${CZMAKE_ROOT_DIR}/bin/b2cpp.py)
+    set(B2CPP ${CZMAKE_ROOT_PATH}/bin/b2cpp.py)
     PYFIND(VERSIONS 2 SUFFIX 2 REQUIRED)
     add_custom_command(
         OUTPUT ${OUTPUT}

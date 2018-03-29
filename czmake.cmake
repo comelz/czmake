@@ -1,5 +1,4 @@
-
-set(CZMAKE_ROOT_DIR ${CMAKE_ROOT}/Modules/czmake CACHE PATH "")
+set(CZMAKE_ROOT_PATH ${CMAKE_CURRENT_LIST_DIR}/czmake CACHE INTERNAL "")
 include(czmake/misc.cmake)
 include(czmake/sip.cmake)
 include(czmake/subversion.cmake)
