@@ -2,16 +2,17 @@
 
 from os import getcwd
 from os.path import join, exists, abspath
-from utils import pushd, popd, mkcd, mkdir, str2bool
+from .utils import pushd, popd, mkcd, mkdir, str2bool
 from subprocess import check_call as run, check_output
 from shutil import rmtree
-from checkout import download, SCM
-from cmake_cache import read_cache
+from .checkout import download, SCM
+from .cmake_cache import read_cache
 from urllib.parse import urlparse
 
 import argparse
 import json
 import sys
+
 
 def argv_parse():
     parser = argparse.ArgumentParser()
@@ -23,9 +24,16 @@ def argv_parse():
     args = parser.parse_args()
     return args
 
+
 args = argv_parse()
 
-class Module:
+
+class Node:
+    def __init__(self):
+        self.children = set()
+
+
+class Module(Node):
     repodir = args.repo_dir
 
     def __init__(self, name=None, uri=None):
@@ -42,11 +50,6 @@ class Module:
 
     def __hash__(self):
         return self.name.__hash__()
-
-class Node:
-    def __init__(self, obj=None):
-        self.obj = obj
-        self.children = set()
 
 
 def walkTree(root, callback):
@@ -106,9 +109,9 @@ while len(node_stack):
                 for cmake_option, values in conf['optdepends'].items():
                     for depobj in values:
                         if (cmake_option in module.cmake_options and
-                                module.cmake_options[cmake_option] == depobj['value']) or (
-                                cmake_option in cache and cache.get(cmake_option, depobj['value']) == depobj['value']
-                                ):
+                                    module.cmake_options[cmake_option] == depobj['value']) or (
+                                        cmake_option in cache and
+                                        cache.get(cmake_option, depobj['value']) == depobj['value']):
                             for depname, depobject in depobj['deps'].items():
                                 if depname in modules:
                                     additional_module = modules[depname]
@@ -131,9 +134,9 @@ while len(node_stack):
 
 
 def build_module_tree(node):
-    if node.obj:
+    if node:
         for child in node.children:
-            node.obj.dependencies.add(child.obj)
+            node.dependencies.add(child)
 
 
 walkTree(root, build_module_tree)
@@ -141,8 +144,8 @@ walkTree(root, build_module_tree)
 processed_modules = set()
 cmake_file = open(join(Module.repodir, 'CMakeLists.txt'), 'w')
 
-def processModule(node):
-    module = node.obj
+
+def processModule(module):
     if module.name and module not in processed_modules:
         for key, value in module.cmake_options.items():
             if isinstance(value, bool):
@@ -154,4 +157,8 @@ def processModule(node):
         cmake_file.write('add_subdirectory(%s)\n' % module.name)
         processed_modules.add(module)
 
+
 walkTree(root, processModule)
+
+if __name__ == '__main__':
+    pass

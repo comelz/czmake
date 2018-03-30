@@ -21,6 +21,7 @@ class SCM:
 
 def download(scm, uri, destination):
     name = basename(destination)
+
     def parse_fragment(fragment):
         res = {}
         for equality in fragment.split():
@@ -83,15 +84,17 @@ def download(scm, uri, destination):
                 if not local_edit:
                     run(['svn', 'switch', url, destination])
                 else:
-                    raise ValueError("Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
+                    raise ValueError(
+                        "Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
 
             print("Downloading '%s' from %s" % (name, url))
             run(['svn', 'update', '-r', ref, destination])
         else:
             run(['svn', 'checkout', '-r', ref, url, destination])
 
+
 if __name__ == '__main__':
     uri = urlparse(sys.argv[1])
     scm = SCM(uri)
     destination = sys.argv[2]
-    download(name, scm, uri, destination)
+    download(scm, uri, destination)

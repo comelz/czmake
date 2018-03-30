@@ -1,5 +1,6 @@
 import os.path
 import subprocess
+import argparse
 
 def mkdir(path):
     try:
@@ -8,7 +9,9 @@ def mkdir(path):
         if not os.path.exists(path):
             raise e
 
+
 def mkcd(path): mkdir(path) and pushd(path)
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1', 'on'):
@@ -18,9 +21,11 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
 def touch(fname, times=None):
     with open(fname, 'a'):
         os.utime(fname, times)
+
 
 def strip(filepath, ts_filepath=None):
     if not ts_filepath:
@@ -28,11 +33,13 @@ def strip(filepath, ts_filepath=None):
     touch(ts_filepath)
     subprocess.check_output(['strip', '-s', filepath])
 
+
 def upx(filepath, ts_filepath=None):
     if not ts_filepath:
         ts_filepath = filepath + '.upx_timestamp'
     touch(ts_filepath)
     subprocess.check_output(['upx', '--best', filepath])
+
 
 def _init():
     dir_stack = []
@@ -48,4 +55,17 @@ def _init():
 
     return pushd, popd
 
+
 pushd, popd = _init()
+
+
+class DirectoryContext():
+    def __init__(self, dirpath):
+        self.dirpath = dirpath
+
+    def __enter__(self):
+        pushd(self.dirpath)
+        return self.dirpath
+
+    def __exit__(self, *args):
+        popd(self.dirpath)

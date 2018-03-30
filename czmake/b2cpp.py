@@ -1,10 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import argparse
-from os import getcwd
+import tempfile
 from os.path import splitext, basename, join, dirname, realpath
 from subprocess import Popen, PIPE
-import tempfile
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert binary files to c++ source files for easy embed')

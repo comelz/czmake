@@ -2,11 +2,14 @@ import os, json, argparse, sys
 from multiprocessing import cpu_count
 from shutil import rmtree
 from subprocess import check_call
-from utils import pushd, popd, mkcd, mkdir, str2bool
+from .utils import pushd, popd, mkdir, str2bool
+from os.path import join, dirname
+
 
 def run(*args, **kwargs):
-    print(' '.join(args[0]))
+    sys.stdout.write(' '.join(args[0]) + '\n')
     return check_call(*args, **kwargs)
+
 
 def update_dict(original, updated):
     for key, value in updated.items():
@@ -15,11 +18,21 @@ def update_dict(original, updated):
         else:
             original[key] = value
 
+
 def argv_parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-o', '--options', help='pass the argument to cmake prepended with -D', action='append', metavar='KEY=VALUE')
+    parser.add_argument('-o', '--options', help='pass the argument to cmake prepended with -D', action='append',
+                        metavar='KEY=VALUE')
+    parser.add_argument("-i", "--install", action='store_true',
+                        help="Calls the install target at the end of the build process")
+    parser.add_argument("-p", "--package", action='store_true',
+                        help="Run CPack at the end of the build process")
+    parser.add_argument("-g", "--launch-ccmake", action='store_true',
+                        help="Run ccmake before building")
     parser.add_argument("-G", "--generator", help="use specified cmake generator")
     parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
+    parser.add_argument("-j", "--jobs", metavar="JOBS",
+                        help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-t", "--cmake-target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-c", "--configuration-file",
                         help="load build configuration from FILE, default is 'build.json'", metavar='FILE')
@@ -28,8 +41,10 @@ def argv_parse():
                         default=None, metavar='(true|false)')
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("-p", "--print", help="show build configuration", action='store_true')
-    parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located", metavar='DIR')
+    parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located",
+                        metavar='DIR')
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='DIR')
+    parser.add_argument("-n", "--no-build", action='store_true', help="Just run cmake without building anything")
     parser.add_argument("configuration", type=str, nargs='*', help="name of the build configuration to use")
     args = parser.parse_args()
     return args
@@ -48,7 +63,7 @@ def parse_cfg(default_configuration=None):
 
     if not args.configuration:
         args.configuration = default_configuration or build_cfg['default']
-    if isinstance(args.configuration, unicode) or isinstance(args.configuration, str):
+    if isinstance(args.configuration, str):
         args.configuration = [args.configuration]
     configuration_list = []
     configuration_set = set()
@@ -85,7 +100,10 @@ def parse_cfg(default_configuration=None):
         'source-directory': 'src',
         'build-command': 'make',
         'cmake-exe': 'cmake',
-        'cmake-target': 'all'
+        'cmake-target': 'all',
+        'options': {
+            '-DCMAKE_MODULE_PATH=%s' % join(dirname(__file__), 'cmake')
+        }
     }
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
@@ -102,13 +120,14 @@ def parse_cfg(default_configuration=None):
         cfg['cmake-exe'] = args.cmake_exe
     if args.cmake_target:
         cfg['cmake-target'] = args.cmake_target
-    if (isinstance(cfg['cmake-target'], unicode) or
-            isinstance(cfg['cmake-target'], str)):
+    if isinstance(cfg['cmake-target'], str):
         cfg['cmake-target'] = [cfg['cmake-target']]
 
     if args.options:
         for option in args.options:
             equal_char = option.find('=')
+            if equal_char < 0:
+                raise ValueError('Unable to parse option "%s"' % option)
             key, value = option[:equal_char], option[equal_char + 1:]
             cfg['options'][key] = value
     cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
