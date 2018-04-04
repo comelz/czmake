@@ -4,6 +4,7 @@ from shutil import rmtree
 from subprocess import check_call
 from .utils import pushd, popd, mkdir, str2bool
 from os.path import join, dirname
+from .utils import DirectoryContext
 
 
 def run(*args, **kwargs):
@@ -23,6 +24,7 @@ def argv_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--options', help='pass the argument to cmake prepended with -D', action='append',
                         metavar='KEY=VALUE')
+    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
     parser.add_argument("-i", "--install", action='store_true',
                         help="Calls the install target at the end of the build process")
     parser.add_argument("-p", "--package", action='store_true',
@@ -30,7 +32,8 @@ def argv_parse():
     parser.add_argument("-g", "--launch-ccmake", action='store_true',
                         help="Run ccmake before building")
     parser.add_argument("-G", "--generator", help="use specified cmake generator")
-    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
+    parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
+    parser.add_argument("-e", "--extra-args", nargs="*", help="extra arguments to pass to CMake")
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-t", "--cmake-target", nargs='*', help="build specified cmake target(s)")
@@ -100,10 +103,11 @@ def parse_cfg(default_configuration=None):
         'source-directory': 'src',
         'build-command': 'make',
         'cmake-exe': 'cmake',
-        'cmake-target': 'all',
+        'cmake-targets': 'all',
         'options': {
-            '-DCMAKE_MODULE_PATH=%s' % join(dirname(__file__), 'cmake')
-        }
+            '-DCMAKE_MODULE_PATH=%s' % dirname(__file__)
+        },
+        'extra_args': []
     }
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
@@ -118,6 +122,8 @@ def parse_cfg(default_configuration=None):
         cfg['generator'] = args.generator
     if args.cmake_exe:
         cfg['cmake-exe'] = args.cmake_exe
+    if args.extra_args:
+        cfg['extra-args'] = args.extra_args
     if args.cmake_target:
         cfg['cmake-target'] = args.cmake_target
     if isinstance(cfg['cmake-target'], str):
@@ -142,22 +148,33 @@ def parse_cfg(default_configuration=None):
 
 def build(configuration):
     cfg = configuration
-    if cfg['clean-build']:
-        os.path.exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
-    mkdir(cfg['build-directory'])
-    pushd(cfg['build-directory'])
-    cmd = [cfg['cmake-exe']]
-
-    if 'generator' in cfg:
-        cmd += ['-G', '%s' % (cfg['generator'])]
-    for key, value in cfg["options"].items():
-        cmd.append('-D%s=%s' % (key, value))
-    cmd.append(cfg['source-directory'])
-
-    run(cmd)
     env = os.environ
     if 'MAKEFLAGS' not in os.environ:
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
-    cmd = [cfg['build-command']] + cfg['cmake-target']
-    run(cmd, env=env)
-    popd()
+    if 'cmake-target' in cfg:
+        for target in cfg['cmake-target']:
+            build_cmd = [cfg['cmake-exe'], '--build', '.', '--target', target]
+    else:
+        build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory']]
+    if 'jobs' in cfg:
+        build_cmd += ['--', '-j%d' % int(cfg['jobs'])]
+
+    if cfg['source-directory']:
+        if cfg['clean-build']:
+            os.path.exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
+        mkdir(cfg['build-directory'])
+        cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH=%s' % dirname(__file__)]
+        if 'generator' in cfg:
+            cmd += ['-G', '%s' % (cfg['generator'])]
+        for option in cfg["options"]:
+            cmd.append(option)
+        if 'extra-args' in cfg:
+            cmd += cfg['extra-args']
+        cmd.append(cfg['source-directory'])
+
+        with DirectoryContext(cfg['build-directory']):
+            run(cmd)
+            if cfg.get('launch-ccmake', False):
+                run(['ccmake', '.'])
+    if not cfg.get('no-build', False):
+        run(build_cmd, env=env)

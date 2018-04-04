@@ -1,0 +1,6 @@
+set(CZMAKE_ROOT_PATH ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "")
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/misc.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/sip.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/subversion.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/library.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies.cmake)

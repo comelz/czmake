@@ -36,9 +36,6 @@ config = {
     "entry_points": {
         'console_scripts': [
             'czmake=czmake.make:run',
-            'git-svn-dcommit=git_svn_clone_externals:run_dcommit',
-            'git-svn-rebase=git_svn_clone_externals:run_rebase',
-            'git-svn-outgoing=git_svn_clone_externals:run_outgoing',
         ],
     }
 }

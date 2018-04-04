@@ -5,7 +5,7 @@ FUNCTION(RESOLVE_DEPENDENCIES)
     cmake_parse_arguments(RESOLVE_EXTERNALS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     PYFIND(VERSIONS 3 SUFFIX 3 REQUIRED)
-    set(EXTERNALS_SCRIPT ${CZMAKE_ROOT_PATH}/bin/dependency_solver.py)
+    set(EXTERNALS_SCRIPT ${CZMAKE_ROOT_PATH}/dependency_solver.py)
     if(NOT INIT_EXTERNALS_REPODIR)
         set(INIT_EXTERNALS_REPODIR lib)
     endif()

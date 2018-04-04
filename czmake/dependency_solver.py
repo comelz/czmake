@@ -2,11 +2,11 @@
 
 from os import getcwd
 from os.path import join, exists, abspath
-from .utils import pushd, popd, mkcd, mkdir, str2bool
+from czmake.utils import pushd, popd, mkcd, mkdir, str2bool
 from subprocess import check_call as run, check_output
 from shutil import rmtree
-from .checkout import download, SCM
-from .cmake_cache import read_cache
+from czmake.checkout import download, SCM
+from czmake.cmake_cache import read_cache
 from urllib.parse import urlparse
 
 import argparse
@@ -82,7 +82,7 @@ modules = {}
 
 cache_file = args.cache_file
 cache = (exists(cache_file) and read_cache(open(cache_file, 'r')) or {})
-root = Node(Module())
+root = Module()
 node_stack = [root]
 while len(node_stack):
     parent_node = node_stack.pop()

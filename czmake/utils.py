@@ -68,4 +68,4 @@ class DirectoryContext():
         return self.dirpath
 
     def __exit__(self, *args):
-        popd(self.dirpath)
+        popd()
