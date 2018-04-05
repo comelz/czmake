@@ -29,7 +29,7 @@ def run():
     parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='FILE', default='cmake')
     parser.add_argument("-G", "--generator", metavar="CMAKE_GENERATOR",
                         help="Specify CMake generator (e.g. 'CodeLite - Unix Makefiles')")
-    parser.add_argument("-T", "--cmake-targets", nargs='*', help="build specified cmake target(s)")
+    parser.add_argument("cmake-targets", nargs='*', help="build specified cmake target(s)", metavar='CMAKE_TARGETS')
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (works only if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-c", "--ccache", action="store_true", help="Use ccache")

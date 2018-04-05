@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 
-from os import getcwd
-from os.path import join, exists, abspath
-from czmake.utils import pushd, popd, mkcd, mkdir, str2bool
-from subprocess import check_call as run, check_output
-from shutil import rmtree
-from czmake.checkout import download, SCM
-from czmake.cmake_cache import read_cache
-from urllib.parse import urlparse
-
 import argparse
 import json
 import sys
+from os.path import join, exists
+from shutil import rmtree
+from urllib.parse import urlparse
+
+from czmake.checkout import download, SCM
+from czmake.cmake_cache import read_cache
+from czmake.utils import mkcd
 
 
 def argv_parse():
@@ -37,8 +35,8 @@ class Module(Node):
     repodir = args.repo_dir
 
     def __init__(self, name=None, uri=None):
+        super().__init__()
         self.name = name
-
         if uri:
             uri = urlparse(uri)
             self.scm = SCM.fromURI(uri)
@@ -74,91 +72,88 @@ def walkTree(root, callback):
             stack_element.index += 1
 
 
-if args.clean:
-    rmtree(Module.repodir)
-source_dir = args.source_dir
-mkcd(Module.repodir)
-modules = {}
+def run():
+    if args.clean:
+        rmtree(Module.repodir)
+    mkcd(Module.repodir)
+    modules = {}
 
-cache_file = args.cache_file
-cache = (exists(cache_file) and read_cache(open(cache_file, 'r')) or {})
-root = Module()
-node_stack = [root]
-while len(node_stack):
-    parent_node = node_stack.pop()
-    externals_file = join(parent_node.obj.directory, 'externals.json')
-    if exists(externals_file):
-        try:
-            conf = json.load(open(externals_file, 'r'))
-            for module_name, module_object in conf["depends"].items():
-                if module_name in modules:
-                    node = Node(modules[module_name])
+    cache_file = args.cache_file
+    cache = (cache_file and exists(cache_file) and read_cache(open(cache_file, 'r')) or {})
+    root = Module()
+    node_stack = [root]
+    while len(node_stack):
+        parent_node = node_stack.pop()
+        externals_file = join(parent_node.directory, 'externals.json')
+        if exists(externals_file):
+            try:
+                conf = json.load(open(externals_file, 'r'))
+                for module_name, module_object in conf["depends"].items():
+                    if module_name in modules:
+                        module = modules[module_name]
+                    else:
+                        module = Module(module_name, module_object['uri'])
+                        download(module.scm, module.uri, module.directory)
+                        modules[module_name] = module
+                    if "options" in module_object:
+                        for key, value in module_object['options'].items():
+                            if key not in module.cmake_options:
+                                module.cmake_options[key] = cache.get(key, value)
+                    parent_node.children.add(module)
+                    node_stack.append(module)
+                if 'optdepends' in conf:
+                    module = parent_node
+                    for cmake_option, values in conf['optdepends'].items():
+                        for depobj in values:
+                            if (cmake_option in module.cmake_options and
+                                        module.cmake_options[cmake_option] == depobj['value']) or (
+                                            cmake_option in cache and
+                                            cache.get(cmake_option, depobj['value']) == depobj['value']):
+                                for depname, depobject in depobj['deps'].items():
+                                    if depname in modules:
+                                        additional_module = modules[depname]
+                                    elif 'uri' in depobject:
+                                        additional_module = Module(depname, depobject['uri'])
+                                        download(additional_module.scm, additional_module.uri,
+                                                 additional_module.directory)
+                                        modules[depname] = additional_module
+                                    else:
+                                        raise ValueError("Cannot retrieve module '%s'" % depname)
+                                    node = additional_module
+                                    if 'options' in depobject:
+                                        for key, value in depobject['options'].items():
+                                            if key not in additional_module.cmake_options:
+                                                additional_module.cmake_options[key] = value
+                                    parent_node.children.add(node)
+                                    node_stack.append(node)
+            except json.JSONDecodeError:
+                sys.stderr.write('Error parsing "%s"\n' % externals_file)
+                raise
+
+    def build_module_tree(node):
+        if node:
+            for child in node.children:
+                node.dependencies.add(child)
+
+    walkTree(root, build_module_tree)
+
+    processed_modules = set()
+    cmake_file = open(join(Module.repodir, 'CMakeLists.txt'), 'w')
+
+    def processModule(module):
+        if module.name and module not in processed_modules:
+            for key, value in module.cmake_options.items():
+                if isinstance(value, bool):
+                    kind = "BOOL"
+                    value = 'ON' if value else 'OFF'
                 else:
-                    module = Module(module_name, module_object['uri'])
-                    download(module.scm, module.uri, module.directory)
-                    node = Node(module)
-                    modules[module_name] = module
-                if "options" in module_object:
-                    for key, value in module_object['options'].items():
-                        if key not in module.cmake_options:
-                            module.cmake_options[key] = cache.get(key, value)
-                parent_node.children.add(node)
-                node_stack.append(node)
-            if 'optdepends' in conf:
-                module = parent_node.obj
-                for cmake_option, values in conf['optdepends'].items():
-                    for depobj in values:
-                        if (cmake_option in module.cmake_options and
-                                    module.cmake_options[cmake_option] == depobj['value']) or (
-                                        cmake_option in cache and
-                                        cache.get(cmake_option, depobj['value']) == depobj['value']):
-                            for depname, depobject in depobj['deps'].items():
-                                if depname in modules:
-                                    additional_module = modules[depname]
-                                elif 'uri' in depobject:
-                                    additional_module = Module(depname, depobject['uri'])
-                                    download(additional_module.scm, additional_module.uri, additional_module.directory)
-                                    modules[depname] = additional_module
-                                else:
-                                    raise ValueError("Cannot retrieve module '%s'" % depname)
-                                node = Node(additional_module)
-                                if 'options' in depobject:
-                                    for key, value in depobject['options'].items():
-                                        if key not in additional_module.cmake_options:
-                                            additional_module.cmake_options[key] = value
-                                parent_node.children.add(node)
-                                node_stack.append(node)
-        except json.JSONDecodeError:
-            sys.stderr.write('Error parsing "%s"\n' % externals_file)
-            raise
+                    kind = "STRING"
+                cmake_file.write('set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind))
+            cmake_file.write('add_subdirectory(%s)\n' % module.name)
+            processed_modules.add(module)
 
+    walkTree(root, processModule)
 
-def build_module_tree(node):
-    if node:
-        for child in node.children:
-            node.dependencies.add(child)
-
-
-walkTree(root, build_module_tree)
-
-processed_modules = set()
-cmake_file = open(join(Module.repodir, 'CMakeLists.txt'), 'w')
-
-
-def processModule(module):
-    if module.name and module not in processed_modules:
-        for key, value in module.cmake_options.items():
-            if isinstance(value, bool):
-                kind = "BOOL"
-                value = 'ON' if value else 'OFF'
-            else:
-                kind = "STRING"
-            cmake_file.write('set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind))
-        cmake_file.write('add_subdirectory(%s)\n' % module.name)
-        processed_modules.add(module)
-
-
-walkTree(root, processModule)
 
 if __name__ == '__main__':
-    pass
+    run()
