@@ -172,13 +172,6 @@ def build(configuration):
     env = os.environ
     if 'MAKEFLAGS' not in os.environ:
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
-    if 'cmake-target' in cfg:
-        for target in cfg['cmake-target']:
-            build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory'], '--target', target]
-    else:
-        build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory']]
-    if 'jobs' in cfg:
-        build_cmd += ['--', '-j%d' % int(cfg['jobs'])]
 
     if cfg['source-directory']:
         if cfg['clean-build']:
@@ -198,4 +191,14 @@ def build(configuration):
             if cfg.get('launch-ccmake', False):
                 run(['ccmake', '.'])
     if not cfg.get('no-build', False):
-        run(build_cmd, env=env)
+        if 'jobs' in cfg:
+            extra_args = ['--', '-j%d' % int(cfg['jobs'])]
+        else:
+            extra_args = []
+        if 'cmake-target' in cfg and len(cfg['cmake-target']) > 0:
+            for target in cfg['cmake-target']:
+                build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory'], '--target', target] + extra_args
+                run(build_cmd, env=env)
+        else:
+            build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory']] + extra_args
+            run(build_cmd, env=env)
