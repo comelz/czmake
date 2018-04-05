@@ -76,7 +76,7 @@ def parse_cfg(default_configuration=None):
     args = argv_parse()
     if not args.configuration_file:
         args.configuration_file = os.path.join(project_directory, 'build.json')
-    build_cfg = json.load(open(args.configuration_file, 'rb'))
+    build_cfg = json.load(open(args.configuration_file, 'r'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
             print(cfg)
