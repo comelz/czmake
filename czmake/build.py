@@ -3,7 +3,7 @@ import json
 import os
 import sys
 from multiprocessing import cpu_count
-from os.path import dirname
+from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
 from subprocess import check_call
 from .utils import DirectoryContext
@@ -72,10 +72,10 @@ def argv_parse():
 
 
 def parse_cfg(default_configuration=None):
-    project_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
+    project_directory = dirname(abspath(sys.argv[0]))
     args = argv_parse()
     if not args.configuration_file:
-        args.configuration_file = os.path.join(project_directory, 'build.json')
+        args.configuration_file = join(project_directory, 'build.json')
     build_cfg = json.load(open(args.configuration_file, 'r'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
@@ -110,7 +110,7 @@ def parse_cfg(default_configuration=None):
             if conf not in configuration_set:
                 configuration_set.add(conf)
                 configuration_list.append(conf)
-    bdirname = 'build-%s' % os.path.basename(project_directory)
+    bdirname = 'build-%s' % basename(project_directory)
     for conf in args.configuration:
         bdirname += '-' + conf
 
@@ -157,7 +157,7 @@ def parse_cfg(default_configuration=None):
         for option in args.options:
             key, value = parse_cmake_option(option)
             cfg['options'][key] = value
-    cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
+    cfg['source-directory'] = abspath(join(project_directory, cfg['source-directory']))
     cfg['project-directory'] = project_directory
 
     if args.print:
@@ -182,7 +182,7 @@ def build(configuration):
 
     if cfg['source-directory']:
         if cfg['clean-build']:
-            os.path.exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
+            exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
         mkdir(cfg['build-directory'])
         cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH=%s' % dirname(__file__)]
         if 'generator' in cfg:
@@ -191,7 +191,7 @@ def build(configuration):
             cmd.append(dump_cmake_option(key, value))
         if 'extra-args' in cfg:
             cmd += cfg['extra-args']
-        cmd.append(cfg['source-directory'])
+        cmd.append(abspath(cfg['source-directory']))
 
         with DirectoryContext(cfg['build-directory']):
             run(cmd)
