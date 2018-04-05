@@ -120,7 +120,7 @@ def parse_cfg(default_configuration=None):
         'source-directory': 'src',
         'build-command': 'make',
         'cmake-exe': 'cmake',
-        'cmake-targets': 'all',
+        'cmake-target': 'all',
         'options': {
             'CMAKE_MODULE_PATH': dirname(__file__)
         },
