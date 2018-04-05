@@ -1,10 +1,13 @@
-import os, json, argparse, sys
+import argparse
+import json
+import os
+import sys
 from multiprocessing import cpu_count
+from os.path import dirname
 from shutil import rmtree
 from subprocess import check_call
-from .utils import pushd, popd, mkdir, str2bool
-from os.path import join, dirname
 from .utils import DirectoryContext
+from .utils import mkdir, str2bool
 
 
 def run(*args, **kwargs):
@@ -19,12 +22,27 @@ def update_dict(original, updated):
         else:
             original[key] = value
 
+def parse_cmake_option(s):
+    index = s.index('=')
+    if index < 0:
+        raise ValueError('Unable to parse cmake property: "%s"' % s)
+    else:
+        return s[:index], s[index+1:]
+
+def dump_cmake_option(key, value):
+    if isinstance(value, bool):
+        return '-D%s=%s' % (key, 'ON' if value else 'OFF')
+    else:
+        return '-D%s=%s' % (key, value)
 
 def argv_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--options', help='pass the argument to cmake prepended with -D', action='append',
                         metavar='KEY=VALUE')
-    parser.add_argument("-e", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
+    parser.add_argument("-B", "--build-type", metavar="BUILD_TYPE",
+                        help="Specify cmake build type")
+    parser.add_argument("-t", "--toolchain-file", metavar="TOOLCHAIN_FILE",
+                        help="Specify the cmake toolchain file")
     parser.add_argument("-i", "--install", action='store_true',
                         help="Calls the install target at the end of the build process")
     parser.add_argument("-p", "--package", action='store_true',
@@ -36,14 +54,14 @@ def argv_parse():
     parser.add_argument("-e", "--extra-args", nargs="*", help="extra arguments to pass to CMake")
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
-    parser.add_argument("-t", "--cmake-target", nargs='*', help="build specified cmake target(s)")
+    parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-c", "--configuration-file",
                         help="load build configuration from FILE, default is 'build.json'", metavar='FILE')
     parser.add_argument("-C", "--clean-build", type=str2bool,
                         help="choose whether or not delete the build directory at the beginning of the build",
                         default=None, metavar='(true|false)')
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
-    parser.add_argument("-p", "--print", help="show build configuration", action='store_true')
+    parser.add_argument("-P", "--print", help="show build configuration", action='store_true')
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located",
                         metavar='DIR')
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='DIR')
@@ -63,7 +81,6 @@ def parse_cfg(default_configuration=None):
         for cfg in sorted(build_cfg['configurations'].keys()):
             print(cfg)
         sys.exit(0)
-
     if not args.configuration:
         args.configuration = default_configuration or build_cfg['default']
     if isinstance(args.configuration, str):
@@ -105,13 +122,17 @@ def parse_cfg(default_configuration=None):
         'cmake-exe': 'cmake',
         'cmake-targets': 'all',
         'options': {
-            '-DCMAKE_MODULE_PATH=%s' % dirname(__file__)
+            'CMAKE_MODULE_PATH': dirname(__file__)
         },
         'extra_args': []
     }
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
 
+    if args.toolchain_file:
+        cfg['options']['CMAKE_TOOLCHAIN_FILE'] = args.toolchain_file
+    if args.build_type:
+        cfg['options']['CMAKE_BUILD_TYPE'] = args.build_type
     if args.clean_build is not None:
         cfg['clean-build'] = args.clean_build
     if args.build_directory:
@@ -128,18 +149,18 @@ def parse_cfg(default_configuration=None):
         cfg['cmake-target'] = args.cmake_target
     if isinstance(cfg['cmake-target'], str):
         cfg['cmake-target'] = [cfg['cmake-target']]
-
+    if args.package:
+        cfg['cmake-target'].append('package')
+    if args.install:
+        cfg['cmake-target'].append('install')
     if args.options:
         for option in args.options:
-            equal_char = option.find('=')
-            if equal_char < 0:
-                raise ValueError('Unable to parse option "%s"' % option)
-            key, value = option[:equal_char], option[equal_char + 1:]
+            key, value = parse_cmake_option(option)
             cfg['options'][key] = value
     cfg['source-directory'] = os.path.abspath(os.path.join(project_directory, cfg['source-directory']))
     cfg['project-directory'] = project_directory
 
-    if getattr(args, 'print'):
+    if args.print:
         print(cfg)
         sys.exit(0)
     else:
@@ -153,7 +174,7 @@ def build(configuration):
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
     if 'cmake-target' in cfg:
         for target in cfg['cmake-target']:
-            build_cmd = [cfg['cmake-exe'], '--build', '.', '--target', target]
+            build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory'], '--target', target]
     else:
         build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory']]
     if 'jobs' in cfg:
@@ -166,8 +187,8 @@ def build(configuration):
         cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH=%s' % dirname(__file__)]
         if 'generator' in cfg:
             cmd += ['-G', '%s' % (cfg['generator'])]
-        for option in cfg["options"]:
-            cmd.append(option)
+        for key, value in cfg["options"].items():
+            cmd.append(dump_cmake_option(key, value))
         if 'extra-args' in cfg:
             cmd += cfg['extra-args']
         cmd.append(cfg['source-directory'])

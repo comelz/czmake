@@ -1,19 +1,19 @@
 #!/bin/env python3
 
 from argparse import ArgumentParser
-from .build import build, run, str2bool
+from .build import build, str2bool, parse_cmake_option
 
 
 def run():
     parser = ArgumentParser(description='Quick cmake build helper tool')
-    parser.add_argument("-b", "--build-type", metavar="BUILD_TYPE",
+    parser.add_argument("-B", "--build-type", metavar="BUILD_TYPE",
                         help="Specify cmake build type")
     parser.add_argument("-C", "--clean-build", type=str2bool,
                         help="choose whether or not delete the build directory at the beginning of the build",
                         default=False, metavar='(true|false)')
     parser.add_argument("-t", "--toolchain-file", metavar="TOOLCHAIN_FILE",
                         help="Specify the cmake toolchain file")
-    parser.add_argument("-d", "--build-directory", metavar="BUILD_DIR", default='.',
+    parser.add_argument("-b", "--build-directory", metavar="BUILD_DIR", default='.',
                         help="Specify the build directory")
     parser.add_argument("-e", "--extra-args", nargs="*", help="extra arguments to pass to CMake")
     parser.add_argument("-n", "--no-build", action='store_true',
@@ -45,15 +45,16 @@ def run():
     options = []
     if optlist.cmake_options:
         for opt in optlist.cmake_options:
-            options.append('-D%s' % (opt))
+            key, value = parse_cmake_option(opt)
+            options[key] = value
     configuration['options'] = options
     if optlist.toolchain_file:
-        configuration['options'].append('-DCMAKE_TOOLCHAIN_FILE=%s' % optlist.toolchain_file)
+        configuration['options']['CMAKE_TOOLCHAIN_FILE'] = optlist.toolchain_file
     if optlist.build_type:
-        configuration['options'].append('-DCMAKE_BUILD_TYPE=%s' % optlist.build_type)
+        configuration['options']['CMAKE_BUILD_TYPE'] = optlist.build_type
     if optlist.ccache:
-        configuration['options'].append('-DCMAKE_C_COMPILER_LAUNCHER=ccache')
-        configuration['options'].append('-DCMAKE_CXX_COMPILER_LAUNCHER=ccache')
+        configuration['options']['CMAKE_C_COMPILER_LAUNCHER'] = 'ccache'
+        configuration['options']['CMAKE_CXX_COMPILER_LAUNCHER'] = 'ccache'
     if optlist.install:
         configuration['cmake-targets'] = ['install']
     if optlist.package:
