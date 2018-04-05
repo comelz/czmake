@@ -12,7 +12,7 @@ config = {
     'author': "Walter Oggioni",
     'author_email': "oggioni.walter@gmail.com",
     'description': ("Comelz build utility module."),
-    'long_description': read('README'),
+    'long_description': read('README.rst'),
     'license': "MIT",
     'keywords': "cmake",
     'url': "https://github.com/comelz/czmake",

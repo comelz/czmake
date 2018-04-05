@@ -42,7 +42,7 @@ def run():
                      key != 'package' and
                      key != 'ccache' and
                      key != 'cmake_options'}
-    options = []
+    options = {}
     if optlist.cmake_options:
         for opt in optlist.cmake_options:
             key, value = parse_cmake_option(opt)
