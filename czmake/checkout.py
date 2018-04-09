@@ -69,27 +69,29 @@ def download(scm, uri, destination):
             url = url._replace(join(url.path, 'branches', branch))
         elif tag:
             url = url._replace(join(url.path, 'tags', tag))
-        url = url.geturl()
         if exists(destination):
             local_edit = len(check_output(['svn', 'st', '-q', destination]).decode('utf-8').split('\n')) > 1
-            prefix = 'URL: '
+            if url.path.startswith('^'):
+                prefix = 'Relative URL: '
+            else:
+                prefix = 'URL: '
             for line in check_output(['svn', 'info', destination]).decode('utf-8').split('\n'):
                 if line.startswith(prefix):
-                    current_url = line[len(prefix):]
+                    current_url = urlparse(line[len(prefix):])
                     break
             else:
                 raise ValueError("Cannot parse URL of local checkout in '%s'" % destination)
             if current_url != url:
                 if not local_edit:
-                    run(['svn', 'switch', url, destination])
+                    run(['svn', 'switch', url.geturl(), destination])
                 else:
                     raise ValueError(
                         "Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
 
-            print("Downloading '%s' from %s" % (name, url))
+            print("Downloading '%s' from %s" % (name, url.geturl()))
             run(['svn', 'update', '-r', ref, destination])
         else:
-            run(['svn', 'checkout', '-r', ref, url, destination])
+            run(['svn', 'checkout', '-r', ref, url.geturl(), destination])
 
 
 if __name__ == '__main__':
