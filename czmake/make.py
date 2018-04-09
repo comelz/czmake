@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from .build import build, str2bool, parse_cmake_option
-
+from .utils import cmake_exe
 
 def run():
     parser = ArgumentParser(description='Quick cmake build helper tool')
@@ -26,7 +26,7 @@ def run():
                         help="Calls the install target at the end of the build process")
     parser.add_argument("-o", "--cmake-options", metavar="CMAKE_OPTION", action='append',
                         help="Add CMake command line option (e.g. -o STATIC_QT5=ON => cmake -DSTATIC_QT5=ON) ...")
-    parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='FILE', default='cmake')
+    parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='FILE', default=cmake_exe)
     parser.add_argument("-G", "--generator", metavar="CMAKE_GENERATOR",
                         help="Specify CMake generator (e.g. 'CodeLite - Unix Makefiles')")
     parser.add_argument("cmake-target", nargs='*', help="build specified cmake target(s)", metavar='CMAKE_TARGET')

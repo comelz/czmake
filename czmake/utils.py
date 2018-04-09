@@ -1,6 +1,9 @@
+import os
 import os.path
 import subprocess
 import argparse
+
+cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
 
 def mkdir(path):
     try:

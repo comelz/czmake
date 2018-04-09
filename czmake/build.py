@@ -6,14 +6,11 @@ from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
 from subprocess import check_call
-from .utils import DirectoryContext
-from .utils import mkdir, str2bool
-
+from .utils import DirectoryContext, mkdir, str2bool, cmake_exe
 
 def run(*args, **kwargs):
     sys.stdout.write(' '.join(args[0]) + '\n')
     return check_call(*args, **kwargs)
-
 
 def update_dict(original, updated):
     for key, value in updated.items():
@@ -119,7 +116,7 @@ def parse_cfg(default_configuration=None):
         'clean-build': False,
         'source-directory': 'src',
         'build-command': 'make',
-        'cmake-exe': 'cmake',
+        'cmake-exe': cmake_exe,
         'cmake-target': 'all',
         'options': {
             'CMAKE_MODULE_PATH': dirname(__file__)
