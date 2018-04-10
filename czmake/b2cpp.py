@@ -64,7 +64,7 @@ if __name__ == "__main__":
         write('const unsigned char %s[%u] = {\n' % (varname, size))
         while True:
             buf = stream.read(1024)
-            write(', '.join(['0x' + b.encode('hex') for b in buf]))
+            write(', '.join([hex(b) for b in buf]))
             if len(buf) < 1024:
                 write('\n};\n')
                 break
