@@ -1,8 +1,8 @@
 #!/bin/env python3
 
 from argparse import ArgumentParser
-from .build import build, str2bool, parse_cmake_option
-from .utils import cmake_exe
+from .build import build, parse_cmake_option
+from .utils import cmake_exe, str2bool
 
 def run():
     parser = ArgumentParser(description='Quick cmake build helper tool')
@@ -16,6 +16,7 @@ def run():
     parser.add_argument("-b", "--build-directory", metavar="BUILD_DIR", default='.',
                         help="Specify the build directory")
     parser.add_argument("-e", "--extra-args", nargs="*", help="extra arguments to pass to CMake")
+    parser.add_argument("-E", "--build-extra-args", nargs="*", help="extra arguments to pass to native build system")
     parser.add_argument("-n", "--no-build", action='store_true',
                         help="Just run cmake without building anything")
     parser.add_argument("-g", "--launch-ccmake", action='store_true',
@@ -26,13 +27,14 @@ def run():
                         help="Calls the install target at the end of the build process")
     parser.add_argument("-o", "--cmake-options", metavar="CMAKE_OPTION", action='append',
                         help="Add CMake command line option (e.g. -o STATIC_QT5=ON => cmake -DSTATIC_QT5=ON) ...")
-    parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='FILE', default=cmake_exe)
+    parser.add_argument("-X", "--cmake-exe", help="use specified cmake executable", metavar='CMAKE_EXE', default=cmake_exe)
     parser.add_argument("-G", "--generator", metavar="CMAKE_GENERATOR",
                         help="Specify CMake generator (e.g. 'CodeLite - Unix Makefiles')")
     parser.add_argument("cmake-target", nargs='*', help="build specified cmake target(s)", metavar='CMAKE_TARGET')
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (works only if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-c", "--ccache", action="store_true", help="Use ccache")
+    parser.add_argument("-l", "--lto", action="store_true", help="Enable link-time optimization support")
     parser.add_argument("-s", "--source-directory", metavar='SRC_DIR',
                         help="Directory where to the main CMakeLists.txt is located")
 
@@ -55,6 +57,8 @@ def run():
     if optlist.ccache:
         configuration['options']['CMAKE_C_COMPILER_LAUNCHER'] = 'ccache'
         configuration['options']['CMAKE_CXX_COMPILER_LAUNCHER'] = 'ccache'
+    if optlist.lto:
+        configuration['options']['CMAKE_INTERPROCEDURAL_OPTIMIZATION'] = True
     if optlist.install:
         configuration['cmake-target'] = ['install']
     if optlist.package:

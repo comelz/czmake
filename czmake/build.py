@@ -46,18 +46,21 @@ def argv_parse():
                         help="Run CPack at the end of the build process")
     parser.add_argument("-g", "--launch-ccmake", action='store_true',
                         help="Run ccmake before building")
-    parser.add_argument("-G", "--generator", help="use specified cmake generator")
-    parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='FILE')
+    parser.add_argument("-X", "--cmake-exe", help="use specified cmake executable", metavar='CMAKE_EXE')
+    parser.add_argument("-G", "--generator", metavar="CMAKE_GENERATOR",
+                        help="Specify CMake generator (e.g. 'CodeLite - Unix Makefiles')")
+    parser.add_argument("-E", "--build-extra-args", nargs="*", help="extra arguments to pass to native build system")
     parser.add_argument("-e", "--extra-args", nargs="*", help="extra arguments to pass to CMake")
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
-    parser.add_argument("-c", "--configuration-file",
-                        help="load build configuration from FILE, default is 'build.json'", metavar='FILE')
+    parser.add_argument("-c", "--conf",
+                        help="load build configuration from CONFIGURATION_FILE, default is 'build.json'", metavar='CONFIGURATION_FILE')
     parser.add_argument("-C", "--clean-build", type=str2bool,
                         help="choose whether or not delete the build directory at the beginning of the build",
                         default=None, metavar='(true|false)')
-    parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
+    parser.add_argument("-l", "--lto", action="store_true", help="Enable link-time optimization support")
+    parser.add_argument("-L", "--list", help="list build configurations", action='store_true')
     parser.add_argument("-P", "--print", help="show build configuration", action='store_true')
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located",
                         metavar='DIR')
@@ -120,8 +123,7 @@ def parse_cfg(default_configuration=None):
         'cmake-target': 'all',
         'options': {
             'CMAKE_MODULE_PATH': dirname(__file__)
-        },
-        'extra_args': []
+        }
     }
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
@@ -150,6 +152,8 @@ def parse_cfg(default_configuration=None):
         cfg['cmake-target'].append('package')
     if args.install:
         cfg['cmake-target'].append('install')
+    if args.lto:
+        cfg['options']['CMAKE_INTERPROCEDURAL_OPTIMIZATION'] = True
     if args.options:
         for option in args.options:
             key, value = parse_cmake_option(option)
@@ -188,9 +192,12 @@ def build(configuration):
             if cfg.get('launch-ccmake', False):
                 run(['ccmake', '.'])
     if not cfg.get('no-build', False):
+        extra_args = ['--']
         if 'jobs' in cfg:
-            extra_args = ['--', '-j%d' % int(cfg['jobs'])]
-        else:
+            extra_args += ['-j%d' % int(cfg['jobs'])]
+        if 'build-extra-args' in cfg:
+            extra_args += cfg['build-extra-args']
+        if len(extra_args) == 1:
             extra_args = []
         if 'cmake-target' in cfg and len(cfg['cmake-target']) > 0:
             for target in cfg['cmake-target']:
