@@ -2,6 +2,7 @@ import os
 import os.path
 import subprocess
 import argparse
+import hashlib
 
 cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
 
@@ -12,6 +13,20 @@ def mkdir(path):
         if not os.path.exists(path):
             raise e
 
+def write_if_different(filepath, content, bufsize=256 * 256):
+    newdigest = hashlib.md5(content.encode()).digest()
+    md5 = hashlib.md5()
+    try:
+        with open(filepath, 'rb') as f:
+            while True:
+                buffer = f.read(bufsize)
+                md5.update(buffer)
+                if len(buffer) < bufsize:
+                    break
+    except FileNotFoundError:
+        pass
+    if md5.digest() != newdigest:
+        open(filepath, 'w').write(content)
 
 def mkcd(path): mkdir(path) and pushd(path)
 

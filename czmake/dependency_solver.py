@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from czmake.checkout import download, SCM
 from czmake.cmake_cache import read_cache
-from czmake.utils import mkcd
+from czmake.utils import mkcd, write_if_different
 
 
 def argv_parse():
@@ -105,10 +105,9 @@ def run():
                     module = parent_node
                     for cmake_option, values in conf['optdepends'].items():
                         for depobj in values:
-                            if (cmake_option in module.cmake_options and
-                                        module.cmake_options[cmake_option] == depobj['value']) or (
-                                            cmake_option in cache and
-                                            cache.get(cmake_option, depobj['value']) == depobj['value']):
+                            if ((cmake_option in module.cmake_options and module.cmake_options[cmake_option] == depobj['value']) or
+                                        (cmake_option in cache and
+                                        cache.get(cmake_option, depobj['value']) == depobj['value'])):
                                 for depname, depobject in depobj['deps'].items():
                                     if depname in modules:
                                         additional_module = modules[depname]
@@ -126,6 +125,14 @@ def run():
                                                 additional_module.cmake_options[key] = value
                                     parent_node.children.add(node)
                                     node_stack.append(node)
+                            else:
+                                for depname, depobject in depobj['deps'].items():
+                                    if depname in modules and 'options' in depobject:
+                                        module = modules[depname]
+                                        for key, value in depobject['options'].items():
+                                            if key not in module.cmake_options:
+                                                module.cmake_options[key] = None
+
             except json.JSONDecodeError:
                 sys.stderr.write('Error parsing "%s"\n' % externals_file)
                 raise
@@ -138,21 +145,26 @@ def run():
     walkTree(root, build_module_tree)
 
     processed_modules = set()
-    cmake_file = open(join(Module.repodir, 'CMakeLists.txt'), 'w')
+    cmake_file = ''
 
     def processModule(module):
+        nonlocal cmake_file
         if module.name and module not in processed_modules:
             for key, value in module.cmake_options.items():
-                if isinstance(value, bool):
+                if value is None:
+                    cmake_file += 'unset(%s CACHE)\n' % (key)
+                    continue    
+                elif isinstance(value, bool):
                     kind = "BOOL"
                     value = 'ON' if value else 'OFF'
                 else:
                     kind = "STRING"
-                cmake_file.write('set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind))
-            cmake_file.write('add_subdirectory(%s)\n' % module.name)
+                cmake_file += 'set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind)
+            cmake_file += 'add_subdirectory(%s)\n' % module.name
             processed_modules.add(module)
 
     walkTree(root, processModule)
+    write_if_different(join(Module.repodir, 'CMakeLists.txt'), cmake_file)
 
 
 if __name__ == '__main__':
