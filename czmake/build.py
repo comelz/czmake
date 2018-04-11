@@ -120,7 +120,6 @@ def parse_cfg(default_configuration=None):
         'source-directory': 'src',
         'build-command': 'make',
         'cmake-exe': cmake_exe,
-        'cmake-target': 'all',
         'options': {
 
         }
@@ -146,20 +145,23 @@ def parse_cfg(default_configuration=None):
         cfg['extra-args'] = args.extra_args
     if args.cmake_target:
         cfg['cmake-target'] = args.cmake_target
-    if isinstance(cfg['cmake-target'], str):
+    if 'cmake-target' in cfg and isinstance(cfg['cmake-target'], str):
         cfg['cmake-target'] = [cfg['cmake-target']]
     if args.package:
-        cfg['cmake-target'].append('package')
+        cfg['cmake-target'] = cfg.get('cmake-target', []) + ['package']
     if args.install:
-        cfg['cmake-target'].append('install')
+        cfg['cmake-target'] = cfg.get('cmake-target', []) + ['install']
     if args.lto:
         cfg['options']['CMAKE_INTERPROCEDURAL_OPTIMIZATION'] = True
     if args.options:
         for option in args.options:
             key, value = parse_cmake_option(option)
             cfg['options'][key] = value
-    cfg['source-directory'] = abspath(join(project_directory, cfg['source-directory']))
+
     cfg['project-directory'] = project_directory
+    with DirectoryContext(project_directory):
+        cfg['source-directory'] = abspath(cfg['source-directory'])
+        cfg['build-directory'] = abspath(cfg['build-directory'])
 
     if args.print:
         print(cfg)
@@ -178,7 +180,7 @@ def build(configuration):
         if cfg['clean-build']:
             exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
         mkdir(cfg['build-directory'])
-        cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH=%s' % join(dirname(__file__), 'cmake')]
+        cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH:PATH=%s' % join(dirname(__file__), 'cmake')]
         if 'generator' in cfg:
             cmd += ['-G', '%s' % (cfg['generator'])]
         for key, value in cfg["options"].items():
