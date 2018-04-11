@@ -72,15 +72,15 @@ def argv_parse():
 
 
 def parse_cfg(default_configuration=None):
-    project_directory = dirname(abspath(sys.argv[0]))
     args = argv_parse()
     if not args.conf:
-        args.conf = join(project_directory, 'build.json')
+        args.conf = join(os.getcwd(), 'build.json')
     build_cfg = json.load(open(args.conf, 'r'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
             print(cfg)
         sys.exit(0)
+    project_directory = dirname(abspath(args.conf))
     if not args.configuration:
         args.configuration = default_configuration or build_cfg['default']
     if isinstance(args.configuration, str):
@@ -122,7 +122,7 @@ def parse_cfg(default_configuration=None):
         'cmake-exe': cmake_exe,
         'cmake-target': 'all',
         'options': {
-            
+
         }
     }
     for conf in configuration_list:
@@ -206,3 +206,7 @@ def build(configuration):
         else:
             build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory']] + extra_args
             run(build_cmd, env=env)
+
+if __name__ == '__main__':
+    name, cfg = parse_cfg()
+    build(cfg)
