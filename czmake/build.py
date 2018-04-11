@@ -74,9 +74,9 @@ def argv_parse():
 def parse_cfg(default_configuration=None):
     project_directory = dirname(abspath(sys.argv[0]))
     args = argv_parse()
-    if not args.configuration_file:
-        args.configuration_file = join(project_directory, 'build.json')
-    build_cfg = json.load(open(args.configuration_file, 'r'))
+    if not args.conf:
+        args.conf = join(project_directory, 'build.json')
+    build_cfg = json.load(open(args.conf, 'r'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
             print(cfg)
@@ -90,7 +90,7 @@ def parse_cfg(default_configuration=None):
     for configuration in args.configuration:
         if configuration not in build_cfg['configurations']:
             raise KeyError('Configuration "%s" does not exist in configuration provided by "%s"' %
-                           (args.configuration, args.configuration_file))
+                           (args.configuration, args.conf))
         inheritance_list = [configuration]
         inheritance_set = set(inheritance_list)
         configuration_inheritance_set = set()
@@ -122,7 +122,7 @@ def parse_cfg(default_configuration=None):
         'cmake-exe': cmake_exe,
         'cmake-target': 'all',
         'options': {
-            'CMAKE_MODULE_PATH': dirname(__file__)
+            
         }
     }
     for conf in configuration_list:
@@ -178,7 +178,7 @@ def build(configuration):
         if cfg['clean-build']:
             exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
         mkdir(cfg['build-directory'])
-        cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH=%s' % dirname(__file__)]
+        cmd = [cfg['cmake-exe'], '-DCMAKE_MODULE_PATH=%s' % join(dirname(__file__), 'cmake')]
         if 'generator' in cfg:
             cmd += ['-G', '%s' % (cfg['generator'])]
         for key, value in cfg["options"].items():

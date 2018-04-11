@@ -16,7 +16,7 @@ config = {
     'license': "MIT",
     'keywords': "cmake",
     'url': "https://github.com/comelz/czmake",
-    'packages': ['czmake', 'czmake/cmake', 'czmake/bin'],
+    'packages': ['czmake', 'czmake/cmake', 'czmake/cmake/private'],
     'include_package_data': True,
     'package_data': {
         '': ['*.cmake'],
