@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 from os.path import exists, abspath, basename, join
 from subprocess import check_output, check_call as run
-from utils import pushd, popd
+from .utils import pushd, popd
 import sys
 
 
