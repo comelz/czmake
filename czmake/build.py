@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import sys
+import platform
 from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
@@ -173,9 +174,8 @@ def parse_cfg(default_configuration=None):
 def build(configuration):
     cfg = configuration
     env = os.environ
-    if 'MAKEFLAGS' not in os.environ:
+    if platform.system() != 'Windows' and 'MAKEFLAGS' not in os.environ:
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
-
     if cfg['source-directory']:
         if cfg['clean-build']:
             exists(cfg['build-directory']) and rmtree(cfg['build-directory'])
