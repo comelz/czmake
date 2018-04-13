@@ -43,8 +43,9 @@ def argv_parse():
                         help="Specify the cmake toolchain file")
     parser.add_argument("-i", "--install", action='store_true',
                         help="Calls the install target at the end of the build process")
-    parser.add_argument("-p", "--package", action='store_true',
-                        help="Run CPack at the end of the build process")
+    parser.add_argument("-p", "--project-directory", help="Root directory of the project (defaults to the directory of the build configuration file)")
+    parser.add_argument("--package", action='store_true',
+                    help="Run CPack at the end of the build process")
     parser.add_argument("-g", "--launch-ccmake", action='store_true',
                         help="Run ccmake before building")
     parser.add_argument("-X", "--cmake-exe", help="use specified cmake executable", metavar='CMAKE_EXE')
@@ -55,7 +56,7 @@ def argv_parse():
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
-    parser.add_argument("-c", "--conf",
+    parser.add_argument("-c", "--conf", default=join(os.getcwd(), 'build.json'),
                         help="load build configuration from CONFIGURATION_FILE, default is 'build.json'", metavar='CONFIGURATION_FILE')
     parser.add_argument("-C", "--clean-build", type=str2bool,
                         help="choose whether or not delete the build directory at the beginning of the build",
@@ -74,14 +75,12 @@ def argv_parse():
 
 def parse_cfg(default_configuration=None):
     args = argv_parse()
-    if not args.conf:
-        args.conf = join(os.getcwd(), 'build.json')
     build_cfg = json.load(open(args.conf, 'r'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
             print(cfg)
         sys.exit(0)
-    project_directory = dirname(abspath(args.conf))
+    project_directory = args.project_directory or dirname(abspath(args.conf))
     if not args.configuration:
         args.configuration = default_configuration or build_cfg['default']
     if isinstance(args.configuration, str):
@@ -127,6 +126,12 @@ def parse_cfg(default_configuration=None):
     }
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
+    
+    with DirectoryContext(project_directory):
+        if 'source-directory' in cfg:
+            cfg['source-directory'] = abspath(cfg['source-directory'])
+        if 'build-directory' in cfg:
+            cfg['build-directory'] = abspath(cfg['build-directory'])
 
     if args.toolchain_file:
         cfg['options']['CMAKE_TOOLCHAIN_FILE'] = args.toolchain_file

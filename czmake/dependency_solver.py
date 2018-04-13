@@ -45,6 +45,7 @@ class Module(Node):
         self.dependencies = set()
         self.directory = join(Module.repodir, name) if name else args.source_dir
         self.condition = {}
+        self.cmake_module = False
 
     def __hash__(self):
         return self.name.__hash__()
@@ -94,6 +95,7 @@ def run():
                     else:
                         module = Module(module_name, module_object['uri'])
                         download(module.scm, module.uri, module.directory)
+                        module.cmake_module = exists(join(module.directory, "CMakeLists.txt"))
                         modules[module_name] = module
                     if "options" in module_object:
                         for key, value in module_object['options'].items():
@@ -115,6 +117,7 @@ def run():
                                         additional_module = Module(depname, depobject['uri'])
                                         download(additional_module.scm, additional_module.uri,
                                                  additional_module.directory)
+                                        additional_module.cmake_module = exists(join(additional_module.directory, "CMakeLists.txt"))
                                         modules[depname] = additional_module
                                     else:
                                         raise ValueError("Cannot retrieve module '%s'" % depname)
@@ -149,7 +152,7 @@ def run():
 
     def processModule(module):
         nonlocal cmake_file
-        if module.name and module not in processed_modules:
+        if module.name and module.cmake_module and module not in processed_modules:
             for key, value in module.cmake_options.items():
                 if value is None:
                     cmake_file += 'unset(%s CACHE)\n' % (key)
