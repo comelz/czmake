@@ -163,11 +163,7 @@ def parse_cfg(default_configuration=None):
         for option in args.options:
             key, value = parse_cmake_option(option)
             cfg['options'][key] = value
-
     cfg['project-directory'] = project_directory
-    with DirectoryContext(project_directory):
-        cfg['source-directory'] = abspath(cfg['source-directory'])
-        cfg['build-directory'] = abspath(cfg['build-directory'])
 
     if args.print:
         print(cfg)
