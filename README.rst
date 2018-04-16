@@ -46,11 +46,7 @@ Modules metadata are declared in a **JSON** file, named ``externals.json`` in th
   }
   
   <module_object> ::= {
-    "type" : <string>,
     "uri" : <string>,
-    "branch" : <string>,
-    "tag" : <string>,
-    "commit" : <string>,
     "options" : <options>
   }
   
@@ -60,7 +56,7 @@ Modules metadata are declared in a **JSON** file, named ``externals.json`` in th
   }
     
 ``type`` is string specifying the module type, currently it can be "svn" or "git"
-``uri`` is the link to the module repository (e.g ), currently only **Subversion** and **Git** are supported; if ``type`` is not specified czmake will try to deduce it from the URI's scheme (e.g. ``svn+ssh`` -> ``svn``); if ``type`` is "git" the ``branch``, ``tag`` and ``commit`` field will be also taken into consideration (``Subversion`` has a special syntax to point the URI to a single revision, branch or tag).
+``uri`` is the link to the module repository (e.g ), currently only **Subversion** and **Git** are supported and the type will be  deduces from the URI's scheme (e.g. ``svn+ssh://user@host:22/svn/repo/folder`` -> ``svn``, ``git+ssh://user@host:22/git/repo/folder`` -> ``git``); when using Git the ``branch``, ``tag`` and ``commit`` can be specified in the URI fragment (e.g. ``git+ssh://user@host:22/git/repo/folder;commit=296cf8a38c0516629cd26d3a8b360e92b3bd955d``) while Subversion has its own syntax to point the URI to a single revision, branch or tag.
 
 <options> is an object containing the key/value pairs that will be translated to CMake cache entries for that module
 
