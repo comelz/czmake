@@ -35,7 +35,11 @@ config = {
     ],
     "entry_points": {
         'console_scripts': [
-            'czmake=czmake.make:run',
+            'czmake=czmake.czmake:run',
+            'czmake-build=czmake.build:run',
+            'czmake-checkout=czmake.dependency_solver:run_without_generate',
+            'czmake-co=czmake.dependency_solver:run_without_generate',
+            'czb=czmake.czb:run',
         ],
     }
 }

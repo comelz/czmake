@@ -9,7 +9,7 @@ from shutil import rmtree
 from subprocess import check_call
 from .utils import DirectoryContext, mkdir, str2bool, cmake_exe
 
-def run(*args, **kwargs):
+def fork(*args, **kwargs):
     sys.stdout.write(' '.join(args[0]) + '\n')
     return check_call(*args, **kwargs)
 
@@ -48,16 +48,14 @@ def argv_parse():
                     help="Run CPack at the end of the build process")
     parser.add_argument("-g", "--launch-ccmake", action='store_true',
                         help="Run ccmake before building")
-    parser.add_argument("-X", "--cmake-exe", help="use specified cmake executable", metavar='CMAKE_EXE')
+    parser.add_argument("-E", "--cmake-exe", help="use specified cmake executable", metavar='CMAKE_EXE')
     parser.add_argument("-G", "--generator", metavar="CMAKE_GENERATOR",
                         help="Specify CMake generator (e.g. 'CodeLite - Unix Makefiles')")
-    parser.add_argument("-E", "--build-extra-args", nargs="*", help="extra arguments to pass to native build system")
-    parser.add_argument("-e", "--extra-args", nargs="*", help="extra arguments to pass to CMake")
     parser.add_argument("-j", "--jobs", metavar="JOBS",
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
-    parser.add_argument("-c", "--conf", default=join(os.getcwd(), 'build.json'),
-                        help="load build configuration from CONFIGURATION_FILE, default is 'build.json'", metavar='CONFIGURATION_FILE')
+    parser.add_argument("-f", "--configuration-file", default=join(os.getcwd(), 'czmake_build.json'),
+                        help="load build configuration from CONFIGURATION_FILE, default is 'czmake_build.json'", metavar='CONFIGURATION_FILE')
     parser.add_argument("-C", "--clean-build", type=str2bool,
                         help="choose whether or not delete the build directory at the beginning of the build",
                         default=None, metavar='(true|false)')
@@ -68,29 +66,30 @@ def argv_parse():
                         metavar='DIR')
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='DIR')
     parser.add_argument("-n", "--no-build", action='store_true', help="Just run cmake without building anything")
-    parser.add_argument("configuration", type=str, nargs='*', help="name of the build configuration to use")
+    parser.add_argument("-c", "--configuration-name", nargs='*', help="name of the build configuration to use")
+    parser.add_argument("extra_args", nargs='*', help="extra arguments to pass to CMake or native build system")
     args = parser.parse_args()
     return args
 
 
 def parse_cfg(default_configuration=None):
     args = argv_parse()
-    build_cfg = json.load(open(args.conf, 'r'))
+    build_cfg = json.load(open(args.configuration_file, 'r'))
     if args.list:
         for cfg in sorted(build_cfg['configurations'].keys()):
             print(cfg)
         sys.exit(0)
-    project_directory = args.project_directory or dirname(abspath(args.conf))
-    if not args.configuration:
-        args.configuration = default_configuration or build_cfg['default']
-    if isinstance(args.configuration, str):
-        args.configuration = [args.configuration]
+    project_directory = args.project_directory or dirname(abspath(args.configuration_file))
+    if not args.configuration_name:
+        args.configuration_name = default_configuration or build_cfg['default']
+    if isinstance(args.configuration_name, str):
+        args.configuration_name = [args.configuration_name]
     configuration_list = []
     configuration_set = set()
-    for configuration in args.configuration:
+    for configuration in args.configuration_name:
         if configuration not in build_cfg['configurations']:
             raise KeyError('Configuration "%s" does not exist in configuration provided by "%s"' %
-                           (args.configuration, args.conf))
+                           (args.configuration_name, args.conf))
         inheritance_list = [configuration]
         inheritance_set = set(inheritance_list)
         configuration_inheritance_set = set()
@@ -111,7 +110,7 @@ def parse_cfg(default_configuration=None):
                 configuration_set.add(conf)
                 configuration_list.append(conf)
     bdirname = 'build-%s' % basename(project_directory)
-    for conf in args.configuration:
+    for conf in args.configuration_name:
         bdirname += '-' + conf
 
     cfg = {
@@ -169,7 +168,7 @@ def parse_cfg(default_configuration=None):
         print(cfg)
         sys.exit(0)
     else:
-        return args.configuration, cfg
+        return args.configuration_name, cfg
 
 
 def build(configuration):
@@ -186,30 +185,34 @@ def build(configuration):
             cmd += ['-G', '%s' % (cfg['generator'])]
         for key, value in cfg["options"].items():
             cmd.append(dump_cmake_option(key, value))
-        if 'extra-args' in cfg:
+        if cfg.get('no-build', False) and 'extra-args' in cfg:
             cmd += cfg['extra-args']
         cmd.append(abspath(cfg['source-directory']))
 
         with DirectoryContext(cfg['build-directory']):
-            run(cmd)
+            fork(cmd)
             if cfg.get('launch-ccmake', False):
-                run(['ccmake', '.'])
+                fork(['ccmake', '.'])
     if not cfg.get('no-build', False):
         extra_args = ['--']
         if 'jobs' in cfg:
             extra_args += ['-j%d' % int(cfg['jobs'])]
-        if 'build-extra-args' in cfg:
-            extra_args += cfg['build-extra-args']
+        if 'extra-args' in cfg:
+            extra_args += cfg['extra-args']
         if len(extra_args) == 1:
             extra_args = []
         if 'cmake-target' in cfg and len(cfg['cmake-target']) > 0:
             for target in cfg['cmake-target']:
                 build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory'], '--target', target] + extra_args
-                run(build_cmd, env=env)
+                fork(build_cmd, env=env)
         else:
             build_cmd = [cfg['cmake-exe'], '--build', cfg['build-directory']] + extra_args
-            run(build_cmd, env=env)
+            fork(build_cmd, env=env)
 
-if __name__ == '__main__':
+
+def run():
     name, cfg = parse_cfg()
     build(cfg)
+
+if __name__ == '__main__':
+    run()

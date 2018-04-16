@@ -3,28 +3,25 @@
 import argparse
 import json
 import sys
+from os import getcwd
 from os.path import join, exists
 from shutil import rmtree
 from urllib.parse import urlparse
 
 from czmake.checkout import download, SCM
 from czmake.cmake_cache import read_cache
-from czmake.utils import mkcd, write_if_different
+from czmake.utils import mkcd, write_if_different, mkdir
 
 
 def argv_parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--source-dir", help="specify source directory", metavar='DIR')
-    parser.add_argument("-b", "--build-dir", help="specify build directory", metavar='DIR')
-    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies", metavar='DIR')
+    parser.add_argument("-s", "--source-dir", help="specify source directory", metavar='SOURCE_DIR')
+    parser.add_argument("-b", "--build-dir", help="specify build directory", metavar='BUILD_DIR')
+    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies", metavar='REPO_DIR')
     parser.add_argument("-c", "--cache-file", help="specify cmake cache file", metavar='CACHE_FILE')
     parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
     args = parser.parse_args()
     return args
-
-
-args = argv_parse()
-
 
 class Node:
     def __init__(self):
@@ -32,9 +29,9 @@ class Node:
 
 
 class Module(Node):
-    repodir = args.repo_dir
+    repodir = None
 
-    def __init__(self, name=None, uri=None):
+    def __init__(self, name=None, uri=None, module_dir=None):
         super().__init__()
         self.name = name
         if uri:
@@ -43,7 +40,7 @@ class Module(Node):
         self.uri = uri
         self.cmake_options = {}
         self.dependencies = set()
-        self.directory = join(Module.repodir, name) if name else args.source_dir
+        self.directory = module_dir or join(Module.repodir, name)
         self.condition = {}
         self.cmake_module = False
 
@@ -72,20 +69,24 @@ def walkTree(root, callback):
             stack.append(StackElement(child))
             stack_element.index += 1
 
-
-def run():
-    if args.clean:
+def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, cache_file=None, clean=False, generate_cmake=False):
+    source_dir = source_dir or getcwd()
+    repo_dir = repo_dir or join(source_dir, 'lib')
+    if not exists(repo_dir):
+        mkdir(repo_dir)
+        
+    Module.repodir = repo_dir
+    if clean:
         rmtree(Module.repodir)
     mkcd(Module.repodir)
     modules = {}
 
-    cache_file = args.cache_file
     cache = (cache_file and exists(cache_file) and read_cache(open(cache_file, 'r')) or {})
-    root = Module()
+    root = Module(module_dir=source_dir)
     node_stack = [root]
     while len(node_stack):
         parent_node = node_stack.pop()
-        externals_file = join(parent_node.directory, 'externals.json')
+        externals_file = join(parent_node.directory, 'czmake_deps.json')
         if exists(externals_file):
             try:
                 conf = json.load(open(externals_file, 'r'))
@@ -139,6 +140,8 @@ def run():
             except json.JSONDecodeError:
                 sys.stderr.write('Error parsing "%s"\n' % externals_file)
                 raise
+        elif not parent_node.name:
+            raise OSError('No czmake_deps.json found in %s' % source_dir)
 
     def build_module_tree(node):
         if node:
@@ -146,29 +149,41 @@ def run():
                 node.dependencies.add(child)
 
     walkTree(root, build_module_tree)
+    if generate_cmake:
+        processed_modules = set()
+        cmake_file = ''
 
-    processed_modules = set()
-    cmake_file = ''
+        def processModule(module):
+            nonlocal cmake_file
+            if module.name and module.cmake_module and module not in processed_modules:
+                for key, value in module.cmake_options.items():
+                    if value is None:
+                        cmake_file += 'unset(%s CACHE)\n' % (key)
+                        continue    
+                    elif isinstance(value, bool):
+                        kind = "BOOL"
+                        value = 'ON' if value else 'OFF'
+                    else:
+                        kind = "STRING"
+                    cmake_file += 'set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind)
+                cmake_file += 'add_subdirectory(%s)\n' % module.name
+                processed_modules.add(module)
 
-    def processModule(module):
-        nonlocal cmake_file
-        if module.name and module.cmake_module and module not in processed_modules:
-            for key, value in module.cmake_options.items():
-                if value is None:
-                    cmake_file += 'unset(%s CACHE)\n' % (key)
-                    continue    
-                elif isinstance(value, bool):
-                    kind = "BOOL"
-                    value = 'ON' if value else 'OFF'
-                else:
-                    kind = "STRING"
-                cmake_file += 'set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind)
-            cmake_file += 'add_subdirectory(%s)\n' % module.name
-            processed_modules.add(module)
+        walkTree(root, processModule)
+        write_if_different(join(Module.repodir, 'CMakeLists.txt'), cmake_file)
 
-    walkTree(root, processModule)
-    write_if_different(join(Module.repodir, 'CMakeLists.txt'), cmake_file)
+def run_without_generate():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--source-dir", 
+        help="specify source directory where the main 'czmake_deps.json' is located, defaults to current directory", 
+        default=getcwd(), metavar='SOURCE_DIR')
+    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies, defaults to ${SOURCE_DIR}/lib", metavar='REPO_DIR')
+    parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
+    args = parser.parse_args()
+    solve_dependencies(generate_cmake=False, **vars(args))
 
+def run():
+    solve_dependencies(generate_cmake=True, **vars(argv_parse()))
 
 if __name__ == '__main__':
     run()
