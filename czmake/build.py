@@ -89,7 +89,7 @@ def parse_cfg(default_configuration=None):
     for configuration in args.configuration_name:
         if configuration not in build_cfg['configurations']:
             raise KeyError('Configuration "%s" does not exist in configuration provided by "%s"' %
-                           (args.configuration_name, args.conf))
+                           (args.configuration_name, args.configuration_file))
         inheritance_list = [configuration]
         inheritance_set = set(inheritance_list)
         configuration_inheritance_set = set()
