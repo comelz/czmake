@@ -6,6 +6,33 @@ import hashlib
 
 cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
 
+def dump_option(key, value):
+    if isinstance(value, bool):
+        return '-D%s=%s' % (key, 'ON' if value else 'OFF')
+    else:
+        return '-D%s=%s' % (key, value)
+
+def parse_option(s):
+    eq = s.find('=')
+    if eq < 0:
+        raise ValueError('Unable to parse option: "%s"' % s)
+    colon = s.find(':')
+    if colon < 0:
+        colon = eq
+        key, value = s[:colon], s[eq+1:]
+        try:
+            value = str2bool(value)
+        except argparse.ArgumentTypeError:
+            pass
+    else:
+        key = s[:colon]
+        ty = s[colon + 1:eq].lower()
+        if ty == 'BOOL':
+            value = str2bool(s[eq+1])
+        else:
+            value = s[eq+1]
+    return key, value
+
 def mkdir(path):
     try:
         os.makedirs(path)

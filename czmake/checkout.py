@@ -1,8 +1,12 @@
 from urllib.parse import urlparse
+from os import getcwd
 from os.path import exists, abspath, basename, join
 from subprocess import check_output, check_call as run
-from .utils import pushd, popd
+from .utils import pushd, popd, DirectoryContext, parse_option, dump_option
 import sys
+import argparse
+import json
+
 
 
 class SCM:
@@ -19,7 +23,9 @@ class SCM:
             raise ValueError("Unrecognized SCM for url '%s'", uri.geturl())
 
 
-def download(scm, uri, destination):
+def download(uri, destination, scm=None):
+    if not scm:
+        scm = SCM.fromURI(uri)
     name = basename(destination)
 
     def parse_fragment(fragment):
@@ -41,8 +47,15 @@ def download(scm, uri, destination):
                 ref = fragment['tag']
             elif 'branch' in fragment:
                 ref = 'origin/%s' % fragment['branch']
-
-        url = uri._replace(fragment='').geturl()
+        scheme = uri.scheme
+        plus = scheme.find('+')
+        if plus > 0:
+            protocol = scheme[plus+1:]
+            if protocol == 'https':
+                scheme = 'https'
+            elif protocol == 'http':
+                scheme = 'http'
+        url = uri._replace(fragment='', scheme=scheme).geturl()
         if exists(destination):
             current_url = check_output(['git', 'config', '--get', 'remote.origin.url'])
             if url != current_url:
@@ -50,7 +63,6 @@ def download(scm, uri, destination):
                                  (abspath(destination)), current_url, url)
             else:
                 run(['git', 'fetch', '--all', '-p'])
-
         else:
             print("Downloading '%s' from %s" % (name, url))
             run(['git', 'clone', '--mirror', url, destination])
@@ -93,9 +105,48 @@ def download(scm, uri, destination):
         else:
             run(['svn', 'checkout', '-r', ref, url.geturl(), destination])
 
+from czmake.dependency_solver import solve_dependencies
+
+def manage_options(args):
+    option_file = 'czmake_opts.json'
+    options = exists(option_file) and json.load(open(option_file, 'w')) or {}
+    if args.option:
+        edit = False
+        for option in args.option:
+            key, value = parse_option(option)
+            if options.get(key, None) != value:
+                options[key] = value
+                edit = True
+        if edit:
+            json.dump(options, open(option_file, 'w'), indent=4)
+    return options
+
+def clone():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies", metavar='REPO_DIR')
+    parser.add_argument("-o", "--option", metavar="OPTION", action='append',
+                        help="Set czmake option (e.g. -o STATIC_QT5=ON => cmake -DSTATIC_QT5=ON) ...")
+    parser.add_argument("uri", help="the repository URI", metavar='URI')
+    parser.add_argument("destination", nargs='?', help="checkout directory", metavar='DIR')
+    args = parser.parse_args()   
+    uri = urlparse(args.uri)
+    destination = args.destination or basename(uri.path)
+    download(uri, destination)
+    with DirectoryContext(destination):
+        options = manage_options(args)
+        solve_dependencies(generate_cmake=False, repo_dir=args.repo_dir, opts=options)
+
+def update():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--source-dir", 
+        help="specify source directory where the main 'czmake_deps.json' is located, defaults to current directory", 
+        default=getcwd(), metavar='SOURCE_DIR')
+    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies, defaults to ${SOURCE_DIR}/lib", metavar='REPO_DIR')
+    parser.add_argument("-o", "--option", metavar="OPTION", action='append',
+                        help="Set czmake option (e.g. -o STATIC_QT5=ON => cmake -DSTATIC_QT5=ON) ...")
+    parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
+    args = parser.parse_args()
+    solve_dependencies(generate_cmake=False, clean=args.clean, repo_dir=args.repo_dir, opts=manage_options(args))
 
 if __name__ == '__main__':
-    uri = urlparse(sys.argv[1])
-    scm = SCM(uri)
-    destination = sys.argv[2]
-    download(scm, uri, destination)
+    clone()

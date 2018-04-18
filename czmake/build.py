@@ -7,7 +7,7 @@ from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
 from subprocess import check_call
-from .utils import DirectoryContext, mkdir, str2bool, cmake_exe
+from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option
 
 def fork(*args, **kwargs):
     sys.stdout.write(' '.join(args[0]) + '\n')
@@ -19,19 +19,6 @@ def update_dict(original, updated):
             update_dict(original[key], value)
         else:
             original[key] = value
-
-def parse_cmake_option(s):
-    index = s.index('=')
-    if index < 0:
-        raise ValueError('Unable to parse cmake property: "%s"' % s)
-    else:
-        return s[:index], s[index+1:]
-
-def dump_cmake_option(key, value):
-    if isinstance(value, bool):
-        return '-D%s=%s' % (key, 'ON' if value else 'OFF')
-    else:
-        return '-D%s=%s' % (key, value)
 
 def argv_parse():
     parser = argparse.ArgumentParser()
@@ -160,7 +147,7 @@ def parse_cfg(default_configuration=None):
         cfg['options']['CMAKE_INTERPROCEDURAL_OPTIMIZATION'] = True
     if args.options:
         for option in args.options:
-            key, value = parse_cmake_option(option)
+            key, value = parse_option(option)
             cfg['options'][key] = value
     cfg['project-directory'] = project_directory
 
@@ -184,7 +171,7 @@ def build(configuration):
         if 'generator' in cfg:
             cmd += ['-G', '%s' % (cfg['generator'])]
         for key, value in cfg["options"].items():
-            cmd.append(dump_cmake_option(key, value))
+            cmd.append(dump_option(key, value))
         if cfg.get('no-build', False) and 'extra-args' in cfg:
             cmd += cfg['extra-args']
         cmd.append(abspath(cfg['source-directory']))

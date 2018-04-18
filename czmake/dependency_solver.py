@@ -4,13 +4,13 @@ import argparse
 import json
 import sys
 from os import getcwd
-from os.path import join, exists
+from os.path import join, exists, basename
 from shutil import rmtree
 from urllib.parse import urlparse
 
 from czmake.checkout import download, SCM
 from czmake.cmake_cache import read_cache
-from czmake.utils import mkcd, write_if_different, mkdir
+from czmake.utils import mkcd, write_if_different, mkdir, DirectoryContext
 
 
 def argv_parse():
@@ -69,7 +69,7 @@ def walkTree(root, callback):
             stack.append(StackElement(child))
             stack_element.index += 1
 
-def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, cache_file=None, clean=False, generate_cmake=False):
+def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None, clean=False, generate_cmake=False, module_download=True):
     source_dir = source_dir or getcwd()
     repo_dir = repo_dir or join(source_dir, 'lib')
     if not exists(repo_dir):
@@ -81,7 +81,6 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, cache_fil
     mkcd(Module.repodir)
     modules = {}
 
-    cache = (cache_file and exists(cache_file) and read_cache(open(cache_file, 'r')) or {})
     root = Module(module_dir=source_dir)
     node_stack = [root]
     while len(node_stack):
@@ -95,13 +94,13 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, cache_fil
                         module = modules[module_name]
                     else:
                         module = Module(module_name, module_object['uri'])
-                        download(module.scm, module.uri, module.directory)
+                        download(module.uri, module.directory, scm=module.scm)
                         module.cmake_module = exists(join(module.directory, "CMakeLists.txt"))
                         modules[module_name] = module
                     if "options" in module_object:
                         for key, value in module_object['options'].items():
                             if key not in module.cmake_options:
-                                module.cmake_options[key] = cache.get(key, value)
+                                module.cmake_options[key] = opts.get(key, value)
                     parent_node.children.add(module)
                     node_stack.append(module)
                 if 'optdepends' in conf:
@@ -109,15 +108,14 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, cache_fil
                     for cmake_option, values in conf['optdepends'].items():
                         for depobj in values:
                             if ((cmake_option in module.cmake_options and module.cmake_options[cmake_option] == depobj['value']) or
-                                        (cmake_option in cache and
-                                        cache.get(cmake_option, depobj['value']) == depobj['value'])):
+                                        (cmake_option in opts and
+                                        opts.get(cmake_option, depobj['value']) == depobj['value'])):
                                 for depname, depobject in depobj['deps'].items():
                                     if depname in modules:
                                         additional_module = modules[depname]
                                     elif 'uri' in depobject:
                                         additional_module = Module(depname, depobject['uri'])
-                                        download(additional_module.scm, additional_module.uri,
-                                                 additional_module.directory)
+                                        download(additional_module.uri, additional_module.directory, scm=additional_module.scm)
                                         additional_module.cmake_module = exists(join(additional_module.directory, "CMakeLists.txt"))
                                         modules[depname] = additional_module
                                     else:
@@ -172,18 +170,13 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, cache_fil
         walkTree(root, processModule)
         write_if_different(join(Module.repodir, 'CMakeLists.txt'), cmake_file)
 
-def run_without_generate():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--source-dir", 
-        help="specify source directory where the main 'czmake_deps.json' is located, defaults to current directory", 
-        default=getcwd(), metavar='SOURCE_DIR')
-    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies, defaults to ${SOURCE_DIR}/lib", metavar='REPO_DIR')
-    parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
-    args = parser.parse_args()
-    solve_dependencies(generate_cmake=False, **vars(args))
-
 def run():
-    solve_dependencies(generate_cmake=True, **vars(argv_parse()))
+    args = argv_parse()
+    opts = (args.cache_file and exists(args.cache_file) and read_cache(open(args.cache_file, 'r')) or {})
+    d = vars(args)
+    del d['cache_file']
+    d['opts'] = opts
+    solve_dependencies(generate_cmake=True, module_download=False, **d)
 
 if __name__ == '__main__':
     run()

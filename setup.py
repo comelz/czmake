@@ -37,9 +37,11 @@ config = {
         'console_scripts': [
             'czmake=czmake.czmake:run',
             'czmake-build=czmake.build:run',
-            'czmake-checkout=czmake.dependency_solver:run_without_generate',
-            'czmake-co=czmake.dependency_solver:run_without_generate',
-            'czb=czmake.czb:run',
+            'czmake-co=czmake.checkout:clone',
+            'czmake-checkout=czmake.checkout:clone',
+            'czmake-update=czmake.checkout:update',
+            'czmake-up=czmake.checkout:update',
+            'czmake-cmake=czmake.czb:run',
         ],
     }
 }
