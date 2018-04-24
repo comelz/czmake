@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import json
 import sys
 from os import getcwd
@@ -8,7 +9,7 @@ from os.path import join, exists, basename
 from shutil import rmtree
 from urllib.parse import urlparse
 
-from czmake.checkout import download, SCM
+from czmake.checkout import download, SCM, repo_cleanup
 from czmake.cmake_cache import read_cache
 from czmake.utils import mkcd, write_if_different, mkdir, DirectoryContext
 
@@ -20,6 +21,7 @@ def argv_parse():
     parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies", metavar='REPO_DIR')
     parser.add_argument("-c", "--cache-file", help="specify cmake cache file", metavar='CACHE_FILE')
     parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
+    parser.add_argument("-u", "--update", help="update dependencies", action='store_true')
     args = parser.parse_args()
     return args
 
@@ -69,7 +71,7 @@ def walkTree(root, callback):
             stack.append(StackElement(child))
             stack_element.index += 1
 
-def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None, clean=False, generate_cmake=False, module_download=True):
+def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None, clean=False, generate_cmake=False, module_download=True, update=False):
     source_dir = source_dir or getcwd()
     repo_dir = repo_dir or join(build_dir, 'czmake')
     mkdir(repo_dir)
@@ -95,7 +97,7 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                         module = modules[module_name]
                     else:
                         module = Module(module_name, module_object['uri'])
-                        download(module.uri, module.directory, scm=module.scm)
+                        download(module.uri, module.directory, scm=module.scm, update=update)
                         module.cmake_module = exists(join(module.directory, "CMakeLists.txt"))
                         modules[module_name] = module
                     if "options" in module_object:
@@ -116,7 +118,7 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                                         additional_module = modules[depname]
                                     elif 'uri' in depobject:
                                         additional_module = Module(depname, depobject['uri'])
-                                        download(additional_module.uri, additional_module.directory, scm=additional_module.scm)
+                                        download(additional_module.uri, additional_module.directory, scm=additional_module.scm, update=update)
                                         additional_module.cmake_module = exists(join(additional_module.directory, "CMakeLists.txt"))
                                         modules[depname] = additional_module
                                     else:
@@ -172,12 +174,14 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
         write_if_different(join(Module.repodir, 'dependency_list.cmake'), cmake_file)
 
 def run():
+    logging.basicConfig(format='%(levelname)s: %(message)s')
     args = argv_parse()
     opts = (args.cache_file and exists(args.cache_file) and read_cache(open(args.cache_file, 'r')) or {})
     d = vars(args)
     del d['cache_file']
     d['opts'] = opts
     solve_dependencies(generate_cmake=True, module_download=False, **d)
+    repo_cleanup()
 
 if __name__ == '__main__':
     run()

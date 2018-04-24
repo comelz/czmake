@@ -8,14 +8,10 @@ from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
 from subprocess import check_call
-from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option
+from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork
 from .build import build
 
 logger = logging.getLogger(__name__)
-
-def fork(*args, **kwargs):
-    sys.stdout.write(' '.join(args[0]) + '\n')
-    return check_call(*args, **kwargs)
 
 def update_dict(original, updated):
     for key, value in updated.items():

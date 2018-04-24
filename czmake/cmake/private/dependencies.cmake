@@ -19,7 +19,6 @@ FUNCTION(RESOLVE_DEPENDENCIES)
         RESULT_VARIABLE PROC_RES
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    message("${PROC_STDOUT}")
     if(NOT PROC_RES EQUAL 0)
         message(FATAL_ERROR "Error resolving project dependencies")
     endif()

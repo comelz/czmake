@@ -1,3 +1,4 @@
+import sys
 import os
 import os.path
 import subprocess
@@ -5,6 +6,10 @@ import argparse
 import hashlib
 
 cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
+
+def fork(*args, **kwargs):
+    sys.stdout.write(' '.join(args[0]) + '\n')
+    return subprocess.check_call(*args, **kwargs)
 
 def dump_option(key, value):
     if isinstance(value, bool):
