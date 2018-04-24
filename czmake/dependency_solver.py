@@ -40,7 +40,7 @@ class Module(Node):
         self.uri = uri
         self.cmake_options = {}
         self.dependencies = set()
-        self.directory = module_dir or join(Module.repodir, name)
+        self.directory = module_dir or join(Module.repodir, 'src', name)
         self.condition = {}
         self.cmake_module = False
 
@@ -71,9 +71,10 @@ def walkTree(root, callback):
 
 def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None, clean=False, generate_cmake=False, module_download=True):
     source_dir = source_dir or getcwd()
-    repo_dir = repo_dir or join(source_dir, 'lib')
-    if not exists(repo_dir):
-        mkdir(repo_dir)
+    repo_dir = repo_dir or join(build_dir, 'czmake')
+    mkdir(repo_dir)
+    mkdir(join(repo_dir, 'src'))
+    mkdir(join(repo_dir, 'build'))
         
     Module.repodir = repo_dir
     if clean:
@@ -164,11 +165,11 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                     else:
                         kind = "STRING"
                     cmake_file += 'set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind)
-                cmake_file += 'add_subdirectory(%s)\n' % module.name
+                cmake_file += 'add_subdirectory("%s" "%s")\n' % (join(Module.repodir, 'src', module.name), join(Module.repodir, 'build', module.name))
                 processed_modules.add(module)
 
         walkTree(root, processModule)
-        write_if_different(join(Module.repodir, 'CMakeLists.txt'), cmake_file)
+        write_if_different(join(Module.repodir, 'dependency_list.cmake'), cmake_file)
 
 def run():
     args = argv_parse()
