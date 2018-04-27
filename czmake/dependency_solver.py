@@ -167,8 +167,12 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                     else:
                         kind = "STRING"
                     cmake_file += 'set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind)
-                cmake_file += 'add_subdirectory("%s" "%s")\n' % (join(Module.repodir, 'src', module.name), join(Module.repodir, 'build', module.name))
+                module_src = join(Module.repodir, 'src', module.name)
+                cmake_file += 'add_subdirectory("%s" "%s")\n' % (module_src, join(Module.repodir, 'build', module.name))
                 processed_modules.add(module)
+                with open(join(module_src, '.czmake_refcount'), 'a') as f:
+                    print(module_src, file=f)
+
 
         walkTree(root, processModule)
         write_if_different(join(Module.repodir, 'dependency_list.cmake'), cmake_file)

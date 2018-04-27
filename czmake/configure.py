@@ -8,18 +8,10 @@ from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
 from subprocess import check_call
-from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork
+from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork, update_dict, cache_file
 from .build import build
 
 logger = logging.getLogger(__name__)
-
-def update_dict(original, updated):
-    for key, value in updated.items():
-        fixed_key = key.replace('-', '_')
-        if fixed_key in original and isinstance(value, dict):
-            update_dict(original[fixed_key], value)
-        else:
-            original[fixed_key] = value
 
 def argv_parse():
     parser = argparse.ArgumentParser()
@@ -113,6 +105,7 @@ def parse_cfg(default_configuration=None):
         'build_directory': bdirname,
         'clean': False,
         'cmake_exe': cmake_exe,
+        'cmake_target' : None,
         'options': {
         }
     }
@@ -142,9 +135,10 @@ def parse_cfg(default_configuration=None):
         cfg['generator'] = args.generator
     if args.cmake_exe:
         cfg['cmake_exe'] = args.cmake_exe
-    cfg['cmake_target'] = args.cmake_target
-    # if isinstance(cfg['cmake_target'], str):
-    #     cfg['cmake_target'] = [cfg['cmake_target']]
+    if args.cmake_target:
+        cfg['cmake_target'] = args.cmake_target
+    if isinstance(cfg['cmake_target'], str):
+        cfg['cmake_target'] = [cfg['cmake_target']]
     if args.package:
         cfg['cmake_target'] = cfg.get('cmake_target', []) + ['package']
     if args.install:
@@ -159,9 +153,8 @@ def parse_cfg(default_configuration=None):
             key, value = parse_option(option)
             cfg['options'][key] = value
     cfg['project_directory'] = project_directory
-
     if args.show:
-        print(cfg)
+        print(json.dumps(cfg, indent=4))
         sys.exit(0)
     else:
         return args.configuration_name, cfg
@@ -180,14 +173,23 @@ def configure(configuration):
         cmd += ['-G', '%s' % (cfg['generator'])]
     for key, value in cfg["options"].items():
         cmd.append(dump_option(key, value))
-    if cfg.get('no_build', False) and 'extra_args' in cfg:
+    if cfg['build'] and 'extra_args' in cfg:
         cmd += cfg['extra_args']
-    cmd.append(abspath(cfg['source_directory']))
+    cfg['source_directory'] = abspath(cfg['source_directory'])
+    cmd.append(cfg['source_directory'])
 
     with DirectoryContext(cfg['build_directory']):
         fork(cmd)
         if cfg.get('launch_ccmake', False):
             fork(['ccmake', '.'])
+        if cfg['build']:
+            cfg['extra_args'] = None
+        del cfg['build']
+        del cfg['build_directory']
+        cache_file = join('czmake', 'czmake_cache.json')
+        with open(cache_file, 'w') as f:
+            json.dump(cfg, f)
+
 
 def run():
     logging.basicConfig(format='%(levelname)s: %(message)s')

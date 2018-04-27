@@ -160,8 +160,6 @@ def download(uri, destination, scm=None, update=False):
                     fork(['svn', 'checkout', url.geturl(), checkout_dest])
                 exists(destination) and unlink(destination)
                 symlink(checkout_dest, destination)
-                with open(join(checkout_dest, '.czmake_refcount'), 'a') as f:
-                    print(abspath(destination), file=f)
         elif exists(destination):
             if not update:
                 return

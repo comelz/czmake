@@ -8,7 +8,7 @@ from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
 from subprocess import check_call
-from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option
+from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, update_dict, cache_file
 
 logger = logging.getLogger(__name__)
 
@@ -26,19 +26,33 @@ def argv_parse():
     parser.add_argument("-j", "--jobs", metavar="JOBS", type=int,
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
-    parser.add_argument("build_directory", help="directory in which the build will take place", metavar='BUILD_DIR')
+    parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='BUILD_DIR', default='.')
     parser.add_argument("extra_args", nargs='*', help="extra arguments to pass to CMake or native build system")
     args = parser.parse_args()
     return args
 
 
 def build(configuration):
-    cfg = configuration
+    cfile = join(configuration['build_directory'], cache_file)
+    if exists(cfile):
+        with open(cfile, 'r') as f:
+            cfg = json.load(f)
+    else:
+        cfg = {}
+    cfg['build_directory'] = configuration['build_directory']
+    if configuration['extra_args']:    
+        cfg['extra_args'] = configuration['extra_args']
+    if configuration['cmake_target']:
+        cfg['cmake_target'] = configuration['cmake_target']
+    if configuration['package']:
+        cfg['cmake_target'] = cfg.get('cmake_target', []).append('package')
+    if configuration['install']:
+        cfg['cmake_target'] = cfg.get('cmake_target', []).append('install')
     env = os.environ
     if platform.system() != 'Windows' and 'MAKEFLAGS' not in os.environ:
         env['MAKEFLAGS'] = "-j%d" % cpu_count()
     extra_args = ['--']
-    if not cfg['jobs'] is None:
+    if cfg.get('jobs', None):
         extra_args += ['-j%d' % cfg['jobs']]
     if cfg['extra_args']:
         extra_args += cfg['extra_args']

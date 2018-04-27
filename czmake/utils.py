@@ -6,6 +6,14 @@ import argparse
 import hashlib
 
 cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
+cache_file = os.path.join('czmake', 'czmake_cache.json')
+def update_dict(original, updated):
+    for key, value in updated.items():
+        fixed_key = key.replace('-', '_')
+        if fixed_key in original and isinstance(value, dict):
+            update_dict(original[fixed_key], value)
+        else:
+            original[fixed_key] = value
 
 def fork(*args, **kwargs):
     sys.stdout.write(' '.join(args[0]) + '\n')
