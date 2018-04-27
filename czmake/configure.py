@@ -182,12 +182,6 @@ def configure(configuration):
         fork(cmd)
         if cfg.get('launch_ccmake', False):
             fork(['ccmake', '.'])
-        if cfg['build']:
-            cfg['extra_args'] = None
-        del cfg['build']
-        del cfg['build_directory']
-        with open(cache_file, 'w') as f:
-            json.dump(cfg, f)
 
 
 def run():
@@ -196,6 +190,13 @@ def run():
     configure(cfg)
     if cfg.get('build', False):
         build(cfg)
+    if cfg['build']:
+        cfg['extra_args'] = None
+    with DirectoryContext(cfg['build_directory']):
+        del cfg['build']
+        del cfg['build_directory']
+        with open(cache_file, 'w') as f:
+            json.dump(cfg, f)        
 
 if __name__ == '__main__':
     run()
