@@ -61,34 +61,6 @@ class FileLock:
         fcntl.flock(self._fd, fcntl.LOCK_UN)
         os.close(self._fd)
 
-def repo_cleanup():
-    with FileLock(checkout_dir):
-        for entry in listdir(checkout_dir):
-            sandbox_dir = join(checkout_dir, entry)
-            refcount_file = join(sandbox_dir, '.czmake_refcount')
-            existing_build_dirs = []
-            rewrite = False
-            with open(refcount_file, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if exists(line):
-                        existing_build_dirs.append(line)
-                    else:
-                        rewrite = True
-            if rewrite:
-                if len(existing_build_dirs):
-                    with open(refcount_file, 'w') as f:
-                        for line in existing_build_dirs:
-                            f.write(line)
-                            f.write('\n')
-                else:
-                    local_edit = len(check_output(['svn', 'st', '-q', sandbox_dir]).decode('utf-8').split('\n')) > 1
-                    if not local_edit:
-                        rmtree(sandbox_dir)
-                    else:
-                        logger.warning('No build directory is using "%s" but, since it contains local modifications, it will not be garbage collected')
-
-
 def download(uri, destination, scm=None, update=False):
     if not scm:
         scm = SCM.fromURI(uri)
@@ -149,18 +121,7 @@ def download(uri, destination, scm=None, update=False):
             url = url._replace(path=join(url.path, 'tags', tag))
         if rev:
             url = url._replace(path=url.path + '@' + rev)
-        if platform.system() == 'Linux':
-            with FileLock(checkout_dir):
-                checkout_hash = md5(url.geturl().encode()).digest().hex()
-                checkout_dest = join(checkout_dir, checkout_hash)
-                if exists(checkout_dest):
-                    if update:
-                        fork(['svn', 'up', '-r', rev or 'HEAD', checkout_dest])
-                else:
-                    fork(['svn', 'checkout', url.geturl(), checkout_dest])
-                exists(destination) and unlink(destination)
-                symlink(checkout_dest, destination)
-        elif exists(destination):
+        if exists(destination):
             if not update:
                 return
             local_edit = len(check_output(['svn', 'st', '-q', destination]).decode('utf-8').split('\n')) > 1
@@ -180,11 +141,11 @@ def download(uri, destination, scm=None, update=False):
                 else:
                     raise ValueError(
                         "Cannot switch URL of local checkout in '%s' because there are local modifications" % destination)
-            
-            print("Downloading '%s' from %s" % (name, url.geturl()))
-            fork(['svn', 'update', '-r', ref, destination])
+            if update:
+                print("Downloading '%s' from %s" % (name, url.geturl()))
+                fork(['svn', 'update', '-r', ref, destination])
         else:
-            fork(['svn', 'checkout', '-r', ref, url.geturl(), destination])
+            fork(['svn', 'checkout', url.geturl(), destination])
 
 from czmake.dependency_solver import solve_dependencies
 
@@ -215,14 +176,14 @@ def clone():
     download(uri, destination)
     with DirectoryContext(destination):
         options = manage_options(args)
-        solve_dependencies(generate_cmake=False, repo_dir=args.repo_dir, opts=options)
+        solve_dependencies(generate_cmake=False, repo_dir=args.repo_dir, opts=options, checkout_mode=True)
 
 def update():
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--source-dir", 
         help="specify source directory where the main 'czmake_deps.json' is located, defaults to current directory", 
         default=getcwd(), metavar='SOURCE_DIR')
-    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies, defaults to ${BUILD_DIRECTORY}/czmake", metavar='REPO_DIR')
+    parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies, defaults to ${SOURCE_DIRECTORY}/lib", metavar='REPO_DIR')
     parser.add_argument("-o", "--option", metavar="OPTION", action='append',
                         help="Set czmake option (e.g. -o STATIC_QT5=ON => cmake -DSTATIC_QT5=ON) ...")
     parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')

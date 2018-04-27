@@ -186,7 +186,6 @@ def configure(configuration):
             cfg['extra_args'] = None
         del cfg['build']
         del cfg['build_directory']
-        cache_file = join('czmake', 'czmake_cache.json')
         with open(cache_file, 'w') as f:
             json.dump(cfg, f)
 

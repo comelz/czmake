@@ -40,6 +40,10 @@ def build(configuration):
     else:
         cfg = {}
     cfg['build_directory'] = configuration['build_directory']
+    if configuration['cmake_exe']:    
+        cfg['cmake_exe'] = configuration['cmake_exe']
+    if configuration['jobs']:    
+        cfg['jobs'] = configuration['jobs']
     if configuration['extra_args']:    
         cfg['extra_args'] = configuration['extra_args']
     if configuration['cmake_target']:
@@ -54,11 +58,11 @@ def build(configuration):
     extra_args = ['--']
     if cfg.get('jobs', None):
         extra_args += ['-j%d' % cfg['jobs']]
-    if cfg['extra_args']:
+    if cfg.get('extra_args', None):
         extra_args += cfg['extra_args']
     if len(extra_args) == 1:
         extra_args = []
-    if cfg['cmake_target'] and len(cfg['cmake_target']) > 0:
+    if cfg.get('cmake_target', None) and len(cfg['cmake_target']) > 0:
         for target in cfg['cmake_target']:
             build_cmd = [cfg['cmake_exe'], '--build', cfg['build_directory'], '--target', target] + extra_args
             fork(build_cmd, env=env)

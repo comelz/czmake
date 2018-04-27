@@ -9,7 +9,7 @@ from os.path import join, exists, basename
 from shutil import rmtree
 from urllib.parse import urlparse
 
-from czmake.checkout import download, SCM, repo_cleanup
+from czmake.checkout import download, SCM
 from czmake.cmake_cache import read_cache
 from czmake.utils import mkcd, write_if_different, mkdir, DirectoryContext
 
@@ -19,7 +19,7 @@ def argv_parse():
     parser.add_argument("-s", "--source-dir", help="specify source directory", metavar='SOURCE_DIR')
     parser.add_argument("-b", "--build-dir", help="specify build directory", metavar='BUILD_DIR')
     parser.add_argument("-r", "--repo-dir", help="specify directory to download dependencies", metavar='REPO_DIR')
-    parser.add_argument("-c", "--cache-file", help="specify cmake cache file", metavar='CACHE_FILE')
+    parser.add_argument("-f", "--cache-file", help="specify cmake cache file", metavar='CACHE_FILE')
     parser.add_argument("-C", "--clean", help="clean repository directory", action='store_true')
     parser.add_argument("-u", "--update", help="update dependencies", action='store_true')
     args = parser.parse_args()
@@ -42,7 +42,7 @@ class Module(Node):
         self.uri = uri
         self.cmake_options = {}
         self.dependencies = set()
-        self.directory = module_dir or join(Module.repodir, 'src', name)
+        self.directory = module_dir or join(Module.repodir, name)
         self.condition = {}
         self.cmake_module = False
 
@@ -71,12 +71,10 @@ def walkTree(root, callback):
             stack.append(StackElement(child))
             stack_element.index += 1
 
-def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None, clean=False, generate_cmake=False, module_download=True, update=False):
+def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None, clean=False, generate_cmake=False, checkout_mode=False, update=False):
     source_dir = source_dir or getcwd()
-    repo_dir = repo_dir or join(build_dir, 'czmake')
+    repo_dir = repo_dir or join(source_dir, 'lib')
     mkdir(repo_dir)
-    mkdir(join(repo_dir, 'src'))
-    mkdir(join(repo_dir, 'build'))
         
     Module.repodir = repo_dir
     if clean:
@@ -110,9 +108,10 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                     module = parent_node
                     for cmake_option, values in conf['optdepends'].items():
                         for depobj in values:
-                            if ((cmake_option in module.cmake_options and module.cmake_options[cmake_option] == depobj['value']) or
-                                        (cmake_option in opts and
-                                        opts.get(cmake_option, depobj['value']) == depobj['value'])):
+                            if (checkout_mode or 
+                                    (cmake_option in module.cmake_options and module.cmake_options[cmake_option] == depobj['value']) or
+                                    (cmake_option in opts and
+                                        (opts.get(cmake_option, depobj['value']) == depobj['value']))):
                                 for depname, depobject in depobj['deps'].items():
                                     if depname in modules:
                                         additional_module = modules[depname]
@@ -121,15 +120,14 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                                         download(additional_module.uri, additional_module.directory, scm=additional_module.scm, update=update)
                                         additional_module.cmake_module = exists(join(additional_module.directory, "CMakeLists.txt"))
                                         modules[depname] = additional_module
+                                        parent_node.children.add(additional_module)
+                                        node_stack.append(additional_module)
                                     else:
                                         raise ValueError("Cannot retrieve module '%s'" % depname)
-                                    node = additional_module
                                     if 'options' in depobject:
                                         for key, value in depobject['options'].items():
                                             if key not in additional_module.cmake_options:
                                                 additional_module.cmake_options[key] = value
-                                    parent_node.children.add(node)
-                                    node_stack.append(node)
                             else:
                                 for depname, depobject in depobj['deps'].items():
                                     if depname in modules and 'options' in depobject:
@@ -167,12 +165,9 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                     else:
                         kind = "STRING"
                     cmake_file += 'set(%s %s CACHE %s "" FORCE)\n' % (key, value, kind)
-                module_src = join(Module.repodir, 'src', module.name)
-                cmake_file += 'add_subdirectory("%s" "%s")\n' % (module_src, join(Module.repodir, 'build', module.name))
+                module_src = join(Module.repodir, module.name)
+                cmake_file += 'add_subdirectory("%s")\n' % (module_src)
                 processed_modules.add(module)
-                with open(join(module_src, '.czmake_refcount'), 'a') as f:
-                    print(module_src, file=f)
-
 
         walkTree(root, processModule)
         write_if_different(join(Module.repodir, 'dependency_list.cmake'), cmake_file)
@@ -184,8 +179,7 @@ def run():
     d = vars(args)
     del d['cache_file']
     d['opts'] = opts
-    solve_dependencies(generate_cmake=True, module_download=False, **d)
-    repo_cleanup()
+    solve_dependencies(generate_cmake=True, **d)
 
 if __name__ == '__main__':
     run()
