@@ -35,10 +35,9 @@ def argv_parse():
     parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
     parser.add_argument("-f", "--configuration-file", default=join(os.getcwd(), 'czmake_build.json'),
                         help="load build configuration from CONFIGURATION_FILE, default is 'czmake_build.json'", metavar='CONFIGURATION_FILE')
-    parser.add_argument("-C", "--clean", type=str2bool,
-                        help="choose whether or not delete the build directory at the beginning of the build",
-                        default=None, metavar='(true|false)')
-    parser.add_argument("--lto", type=str2bool, metavar='(true|false)', help="Enable link-time optimization support")
+    parser.add_argument("-C", "--clean", type=str2bool, nargs='?', const=True,
+                        help="choose whether or not delete the build directory at the beginning of the build", metavar='(true|false)')
+    parser.add_argument("--lto", type=str2bool, nargs='?', const=True, metavar='(true|false)', help="Enable link-time optimization support")
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("--show", help="show build configuration", action='store_true')
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='DIR')
@@ -47,7 +46,7 @@ def argv_parse():
                         metavar='DIR')
     parser.add_argument("--build", action='store_true', help="Start the build process after configuration is finished")
     parser.add_argument("-c", "--configuration-name", nargs='*', help="name of the build configuration to use")
-    parser.add_argument("--ccache", type=str2bool, metavar='(true|false)', help="Use ccache")
+    parser.add_argument("--ccache", type=str2bool, nargs='?', const=True, metavar='(true|false)', help="Use ccache")
     parser.add_argument("extra_args", nargs='*', help="extra arguments to pass to CMake or native build system")
     args = parser.parse_args()
     return args
