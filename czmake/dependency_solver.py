@@ -105,11 +105,10 @@ def solve_dependencies(source_dir=None, build_dir=None, repo_dir=None, opts=None
                     parent_node.children.add(module)
                     node_stack.append(module)
                 if 'optdepends' in conf:
-                    module = parent_node
                     for cmake_option, values in conf['optdepends'].items():
                         for depobj in values:
                             if (checkout_mode or 
-                                    (cmake_option in module.cmake_options and module.cmake_options[cmake_option] == depobj['value']) or
+                                    (cmake_option in parent_node.cmake_options and parent_node.cmake_options[cmake_option] == depobj['value']) or
                                     (cmake_option in opts and
                                         (opts.get(cmake_option, depobj['value']) == depobj['value']))):
                                 for depname, depobject in depobj['deps'].items():
