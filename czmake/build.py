@@ -55,7 +55,7 @@ def build(configuration):
             build_cmd = [cfg['cmake_exe'], '--build', cfg['build_directory'], '--target', target] + extra_args
             fork(build_cmd, env=env)
     else:
-        build_cmd = [cfg['cmake_exe'], '--build', cfg['build_directory']] + extra_args
+        build_cmd = [cfg.get('cmake_exe', cmake_exe), '--build', cfg['build_directory']] + extra_args
         fork(build_cmd, env=env)
 
 
