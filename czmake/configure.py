@@ -21,9 +21,9 @@ def argv_parse():
                         help="Specify cmake build type")
     parser.add_argument("-t", "--toolchain-file", metavar="TOOLCHAIN_FILE",
                         help="Specify the cmake toolchain file")
-    parser.add_argument("--install", action='store_true',
+    parser.add_argument("--install", type=str2bool, nargs='?', const=True, metavar='(true|false)',
                         help="Calls the install target at the end of the build process")
-    parser.add_argument("--package", action='store_true',
+    parser.add_argument("--package", type=str2bool, nargs='?', const=True, metavar='(true|false)',
                         help="Run CPack at the end of the build process")
     parser.add_argument("-g", "--launch-ccmake", action='store_true',
                         help="Run ccmake before building")
@@ -110,7 +110,7 @@ def parse_cfg(default_configuration=None):
     }
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
-    
+  
     with DirectoryContext(project_directory):
         cfg['source_directory'] = abspath(cfg['source_directory'])
         cfg['build_directory'] = abspath(cfg['build_directory'])
@@ -134,14 +134,18 @@ def parse_cfg(default_configuration=None):
         cfg['generator'] = args.generator
     if args.cmake_exe:
         cfg['cmake_exe'] = args.cmake_exe
-    if args.cmake_target:
+    if not args.cmake_target is None:
         cfg['cmake_target'] = args.cmake_target
     if isinstance(cfg['cmake_target'], str):
         cfg['cmake_target'] = [cfg['cmake_target']]
     if args.package:
         cfg['cmake_target'] = cfg.get('cmake_target', []) + ['package']
+    elif args.package == False and cfg['cmake_target']:
+        cfg['cmake_target'] = [target for target in cfg['cmake_target'] if target != 'package']
     if args.install:
         cfg['cmake_target'] = cfg.get('cmake_target', []) + ['install']
+    elif args.install == False and cfg['cmake_target']:
+        cfg['cmake_target'] = [target for target in cfg['cmake_target'] if target != 'install']
     cfg['extra_args'] = args.extra_args
     cfg['jobs'] = args.jobs
     cfg['build'] = args.build
