@@ -1,14 +1,14 @@
 import argparse
 import json
-import os
-import sys
 import logging
+import os
 import platform
+import sys
 from multiprocessing import cpu_count
-from os.path import dirname, abspath, join, exists, basename
-from shutil import rmtree
+from os.path import join, exists
 from subprocess import check_call
-from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, update_dict, cache_file
+
+from .utils import str2bool, cmake_exe, update_dict, cache_file
 
 logger = logging.getLogger(__name__)
 

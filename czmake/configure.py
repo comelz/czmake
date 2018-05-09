@@ -7,11 +7,12 @@ import platform
 from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
-from subprocess import check_call
-from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork, update_dict, cache_file
+from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork, update_dict, \
+    cache_file
 from .build import build
 
 logger = logging.getLogger(__name__)
+
 
 def argv_parse():
     parser = argparse.ArgumentParser()
@@ -33,15 +34,19 @@ def argv_parse():
     parser.add_argument("-j", "--jobs", metavar="JOBS", type=int,
                         help="maximum number of concurrent jobs (only works if native build system has support for '-j N' command line parameter)")
     parser.add_argument("-T", "--cmake-target", nargs='*', help="build specified cmake target(s)")
-    parser.add_argument("-f", "--configuration-file", default=join(os.getcwd(), 'czmake_build.json'),
-                        help="load build configuration from CONFIGURATION_FILE, default is 'czmake_build.json'", metavar='CONFIGURATION_FILE')
+    parser.add_argument("-f", "--configuration-file", default=join(os.getcwd(), 'build.czmake'),
+                        help="load build configuration from CONFIGURATION_FILE, default is 'czmake_build.json'",
+                        metavar='CONFIGURATION_FILE')
     parser.add_argument("-C", "--clean", type=str2bool, nargs='?', const=True,
-                        help="choose whether or not delete the build directory at the beginning of the build", metavar='(true|false)')
-    parser.add_argument("--lto", type=str2bool, nargs='?', const=True, metavar='(true|false)', help="Enable link-time optimization support")
+                        help="choose whether or not delete the build directory at the beginning of the build",
+                        metavar='(true|false)')
+    parser.add_argument("--lto", type=str2bool, nargs='?', const=True, metavar='(true|false)',
+                        help="Enable link-time optimization support")
     parser.add_argument("-l", "--list", help="list build configurations", action='store_true')
     parser.add_argument("--show", help="show build configuration", action='store_true')
     parser.add_argument("-b", "--build-directory", help="directory in which the build will take place", metavar='DIR')
-    parser.add_argument("-p", "--project-directory", help="root directory of the project (defaults to the directory of the build configuration file)")
+    parser.add_argument("-p", "--project-directory",
+                        help="root directory of the project (defaults to the directory of the build configuration file)")
     parser.add_argument("-s", "--source-directory", help="directory where the main CMakeLists.txt file is located",
                         metavar='DIR')
     parser.add_argument("--build", action='store_true', help="Start the build process after configuration is finished")
@@ -51,9 +56,11 @@ def argv_parse():
     args = parser.parse_args()
     return args
 
+
 def parse_cfg(default_configuration=None):
     args = argv_parse()
-    project_directory = args.project_directory or dirname(abspath(args.configuration_file)) if exists(args.configuration_file) else abspath('.')
+    project_directory = args.project_directory or dirname(abspath(args.configuration_file)) if exists(
+        args.configuration_file) else abspath('.')
     bdirname = 'build-%s' % basename(project_directory)
     configuration_list = []
     try:
@@ -62,7 +69,7 @@ def parse_cfg(default_configuration=None):
             for cfg in sorted(build_cfg['configurations'].keys()):
                 print(cfg)
             sys.exit(0)
-        
+
         if not args.configuration_name:
             args.configuration_name = default_configuration or build_cfg['default']
         if isinstance(args.configuration_name, str):
@@ -71,7 +78,7 @@ def parse_cfg(default_configuration=None):
         for configuration in args.configuration_name:
             if configuration not in build_cfg['configurations']:
                 raise KeyError('Configuration "%s" does not exist in configuration provided by "%s"' %
-                            (args.configuration_name, args.configuration_file))
+                               (args.configuration_name, args.configuration_file))
             inheritance_list = [configuration]
             inheritance_set = set(inheritance_list)
             configuration_inheritance_set = set()
@@ -104,13 +111,19 @@ def parse_cfg(default_configuration=None):
         'build_directory': bdirname,
         'clean': False,
         'cmake_exe': cmake_exe,
-        'cmake_target' : None,
+        'cmake_target': None,
         'options': {
         }
     }
+    with DirectoryContext(project_directory):
+        if 'source_directory' in build_cfg:
+            build_cfg['source_directory'] = abspath(build_cfg['source_directory'])
+        if 'build_directory' in build_cfg:
+            build_cfg['build_directory'] = abspath(build_cfg['build_directory'])
+
     for conf in configuration_list:
         update_dict(cfg, build_cfg['configurations'][conf])
-  
+
     with DirectoryContext(project_directory):
         cfg['source_directory'] = abspath(cfg['source_directory'])
         cfg['build_directory'] = abspath(cfg['build_directory'])
@@ -199,7 +212,8 @@ def run():
         del cfg['build']
         del cfg['build_directory']
         with open(cache_file, 'w') as f:
-            json.dump(cfg, f)        
+            json.dump(cfg, f)
+
 
 if __name__ == '__main__':
     run()
