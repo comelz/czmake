@@ -104,6 +104,7 @@ def parse_cfg(default_configuration=None):
         if args.configuration_name:
             raise err
         else:
+            build_cfg = {}
             logger.warning('Build configuration file "%s" not found' % join(args.configuration_file))
 
     cfg = {
