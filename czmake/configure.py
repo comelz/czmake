@@ -132,10 +132,10 @@ def parse_cfg(default_configuration=None):
         cfg['options']['CMAKE_TOOLCHAIN_FILE'] = args.toolchain_file
     if args.build_type:
         cfg['options']['CMAKE_BUILD_TYPE'] = args.build_type
-    if args.ccache:
+    if args.ccache is not None:
         cfg['options']['CMAKE_C_COMPILER_LAUNCHER'] = 'ccache'
         cfg['options']['CMAKE_CXX_COMPILER_LAUNCHER'] = 'ccache'
-    if args.lto:
+    if args.lto is not None:
         cfg['options']['CMAKE_INTERPROCEDURAL_OPTIMIZATION'] = True
     if args.clean is not None:
         cfg['clean'] = args.clean
