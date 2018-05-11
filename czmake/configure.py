@@ -187,7 +187,7 @@ def parse_cfg(default_configuration=None):
 def configure(configuration, update=False):
     if update:
         import quark
-        quark.checkout.resolve_dependencies(configuration['source_directory'])
+        quark.checkout.resolve_dependencies(configuration['source_directory'], options=configuration['options'])
     except ImportError:
         pass
     cfg = configuration
