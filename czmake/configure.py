@@ -188,8 +188,6 @@ def configure(configuration, update=False):
     if update:
         import quark
         quark.checkout.resolve_dependencies(configuration['source_directory'], options=configuration['options'])
-    except ImportError:
-        pass
     cfg = configuration
     env = os.environ
     if platform.system() != 'Windows' and 'MAKEFLAGS' not in os.environ:
