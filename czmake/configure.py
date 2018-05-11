@@ -53,6 +53,12 @@ def argv_parse():
     parser.add_argument("-c", "--configuration-name", nargs='*', help="name of the build configuration to use")
     parser.add_argument("--ccache", type=str2bool, nargs='?', const=True, metavar='(true|false)', help="Use ccache")
     parser.add_argument("extra_args", nargs='*', help="extra arguments to pass to CMake or native build system")
+    try: 
+        import quark
+        parser.add_argument("-u", "--update", help="update dependencies using quark", action="store_true",
+                        metavar='DIR')
+    except ImportError:
+        pass
     args = parser.parse_args()
     return args
 
@@ -114,7 +120,7 @@ def parse_cfg(default_configuration=None):
         'cmake_exe': cmake_exe,
         'cmake_target': None,
         'options': {
-        }
+        },
     }
     with DirectoryContext(project_directory):
         if 'source_directory' in build_cfg:
@@ -174,10 +180,16 @@ def parse_cfg(default_configuration=None):
         print(json.dumps(cfg, indent=4))
         sys.exit(0)
     else:
-        return args.configuration_name, cfg
+        args_dict = vars(args)
+        return args.configuration_name, cfg, {'update' : args_dict.get('update', False)}
 
 
-def configure(configuration):
+def configure(configuration, update=False):
+    if update:
+        import quark
+        quark.checkout.resolve_dependencies(configuration['source_directory'])
+    except ImportError:
+        pass
     cfg = configuration
     env = os.environ
     if platform.system() != 'Windows' and 'MAKEFLAGS' not in os.environ:
@@ -203,8 +215,8 @@ def configure(configuration):
 
 def run():
     logging.basicConfig(format='%(levelname)s: %(message)s')
-    name, cfg = parse_cfg()
-    configure(cfg)
+    name, cfg, kwargs = parse_cfg()
+    configure(cfg, **kwargs)
     if cfg.get('build', False):
         build(cfg)
     if cfg['build']:
