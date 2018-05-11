@@ -55,8 +55,7 @@ def argv_parse():
     parser.add_argument("extra_args", nargs='*', help="extra arguments to pass to CMake or native build system")
     try: 
         import quark
-        parser.add_argument("-u", "--update", help="update dependencies using quark", action="store_true",
-                        metavar='DIR')
+        parser.add_argument("-u", "--update", help="update dependencies using quark", action="store_true")
     except ImportError:
         pass
     args = parser.parse_args()
