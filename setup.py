@@ -8,7 +8,7 @@ def read(fname):
 
 config = {
     'name': "czmake",
-    'version': "0.5",
+    'version': "0.6",
     'author': "Walter Oggioni",
     'author_email': "oggioni.walter@gmail.com",
     'description': ("Comelz build utility module."),
