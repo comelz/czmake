@@ -210,9 +210,9 @@ def configure(configuration, update=False):
             fork(['ccmake', '.'])
 
 
-def run():
+def run(default_configuration=None):
     logging.basicConfig(format='%(levelname)s: %(message)s')
-    name, cfg, kwargs = parse_cfg()
+    name, cfg, kwargs = parse_cfg(default_configuration)
     configure(cfg, **kwargs)
     if cfg.get('build', False):
         build(cfg)
