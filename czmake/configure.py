@@ -219,10 +219,10 @@ def run(default_configuration=None):
     if cfg['build']:
         cfg['extra_args'] = None
     with DirectoryContext(cfg['build_directory']):
-        del cfg['build']
-        del cfg['build_directory']
+        conf = {key:value for key,value in cfg.items() if key not in {'build', 'build_directory'}}
         with open(cache_file, 'w') as f:
-            json.dump(cfg, f)
+            json.dump(conf, f)
+    return name, cfg
 
 
 if __name__ == '__main__':
