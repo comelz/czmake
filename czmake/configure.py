@@ -210,7 +210,7 @@ def configure(configuration, update=False):
             fork(['ccmake', '.'])
 
 
-def run(default_configuration=None):
+def configure_cli(default_configuration=None):
     logging.basicConfig(format='%(levelname)s: %(message)s')
     name, cfg, kwargs = parse_cfg(default_configuration)
     configure(cfg, **kwargs)
@@ -223,6 +223,9 @@ def run(default_configuration=None):
         with open(cache_file, 'w') as f:
             json.dump(conf, f)
     return name, cfg
+
+def run():
+    configure_cli()
 
 
 if __name__ == '__main__':

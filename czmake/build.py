@@ -59,7 +59,7 @@ def build(configuration):
         fork(build_cmd, env=env)
 
 
-def run():
+def build_cli():
     logging.basicConfig(format='%(levelname)s: %(message)s')
     cfg = vars(argv_parse())
     if isinstance(cfg['cmake_target'], str):
@@ -75,6 +75,9 @@ def run():
     elif cfg['install'] == False and cfg['cmake_target']:
         cfg['cmake_target'] = [target for target in cfg['cmake_target'] if target != 'install']
     build(cfg)
+
+def run(): 
+    build_cli()
 
 if __name__ == '__main__':
     run()
