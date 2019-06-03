@@ -1,8 +1,9 @@
 #!/bin/env python3
-
+# -*- coding: utf8 -*-
 from argparse import ArgumentParser, REMAINDER
 from .build import build, parse_cmake_option
 from .utils import cmake_exe, str2bool
+
 
 def run():
     parser = ArgumentParser(description='Quick cmake build helper tool')
@@ -38,11 +39,15 @@ def run():
                         help="Directory where to the main CMakeLists.txt is located")
 
     optlist = parser.parse_args()
-    configuration = {key.replace('_', '-'): value for key, value in optlist.__dict__.items() if value is not None and
-                     key != 'toolchain_file' and
-                     key != 'package' and
-                     key != 'ccache' and
-                     key != 'cmake_options'}
+    configuration = {
+        key.replace('_', '-'): value
+        for key, value in optlist.__dict__.items()
+        if value is not None
+        and key != 'toolchain_file'
+        and key != 'package'
+        and key != 'ccache'
+        and key != 'cmake_options'
+    }
     options = {}
     if optlist.cmake_options:
         for opt in optlist.cmake_options:

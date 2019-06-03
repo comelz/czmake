@@ -1,3 +1,6 @@
+# -*- coding: utf8 -*-
+
+
 class ParseError(Exception):
     """Exception raised for errors during parse.
 
@@ -5,7 +8,6 @@ class ParseError(Exception):
         line -- number of the line that caused the error
         message -- explanation of the error
     """
-
     def __init__(self, line, message):
         self.line = line
         self.message = message
@@ -13,8 +15,8 @@ class ParseError(Exception):
     def __repr__(self):
         return 'Error at line %d: %s' % (self.line, self.message)
 
+
 class CMakeCache(dict):
-    
     falsy_values = ['', '0', 'OFF', 'NO', 'FALSE', 'N', 'IGNORE', 'NOTFOUND']
 
     @staticmethod
@@ -24,10 +26,7 @@ class CMakeCache(dict):
             if ref == val:
                 return False
         else:
-            if val.endswith('NOTFOUND'):
-                return False
-            else:
-                return True         
+            return not val.endswith('NOTFOUND')
 
     def get(self, key, default):
         if key in self:
@@ -38,6 +37,7 @@ class CMakeCache(dict):
         else:
             return default
 
+
 def read_cache(cmake_cache_file):
     result = CMakeCache()
     line_index = 0
@@ -45,10 +45,8 @@ def read_cache(cmake_cache_file):
         index = line.find(' = ')
         if index < 0:
             print(line)
-            raise ParseError(line_index, 'Cannot parse entry') 
-        key, value = line[:index], line[index+3:-1]
+            raise ParseError(line_index, 'Cannot parse entry')
+        key, value = line[:index], line[index + 3:- 1]
         result[key] = value
         line_index += 1
     return result
-
-            

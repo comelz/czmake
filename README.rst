@@ -11,6 +11,7 @@ It has the following features:
 * CMake cache variables management: you need module ``A`` that has a CMake option to build with feature ``X``, ``A`` depends on ``B`` which has another CMake option to build with feature ``Y``, to build ``A`` with ``X`` you also need to build ``B`` with ``Y`` but if you don't need ``A`` with X you may also not need B with ``Y``. CZMake will automatically enable feature Y when you enable feature X
 * Optional dependencies: you need module A that has a CMake option to build with feature X, in that case A depends on B. CZMake will download and add B only if you enable X.
 
+
 Installation
 ------------
 czmake is written in python 3, all you need is a working python3 installation with pip and run this from a terminal:

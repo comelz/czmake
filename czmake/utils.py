@@ -1,12 +1,14 @@
-import sys
+# -*- coding: utf8 -*-
+import argparse
+import hashlib
 import os
 import os.path
 import subprocess
-import argparse
-import hashlib
+import sys
 
 cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
 cache_file = os.path.join('czmake_cache.json')
+
 
 def update_dict(original, updated):
     for key, value in updated.items():
@@ -18,15 +20,18 @@ def update_dict(original, updated):
         elif fixed_key in original and value:
             original[fixed_key] = value
 
+
 def fork(*args, **kwargs):
     sys.stdout.write(' '.join(args[0]) + '\n')
     return subprocess.check_call(*args, **kwargs)
+
 
 def dump_option(key, value):
     if isinstance(value, bool):
         return '-D%s=%s' % (key, 'ON' if value else 'OFF')
     else:
         return '-D%s=%s' % (key, value)
+
 
 def parse_option(s):
     eq = s.find('=')
@@ -35,7 +40,7 @@ def parse_option(s):
     colon = s.find(':')
     if colon < 0:
         colon = eq
-        key, value = s[:colon], s[eq+1:]
+        key, value = s[:colon], s[eq + 1:]
         try:
             value = str2bool(value)
         except argparse.ArgumentTypeError:
@@ -44,17 +49,20 @@ def parse_option(s):
         key = s[:colon]
         ty = s[colon + 1:eq].lower()
         if ty == 'BOOL':
-            value = str2bool(s[eq+1])
+            value = str2bool(s[eq + 1])
         else:
-            value = s[eq+1]
+            value = s[eq + 1]
     return key, value
 
+
 def mkdir(path):
+    # TODO: can we directly use os.makedirs?
     try:
         os.makedirs(path)
     except OSError as e:
         if not os.path.exists(path):
             raise e
+
 
 def write_if_different(filepath, content, bufsize=256 * 256):
     newdigest = hashlib.md5(content.encode()).digest()
@@ -67,11 +75,15 @@ def write_if_different(filepath, content, bufsize=256 * 256):
                 if len(buffer) < bufsize:
                     break
     except FileNotFoundError:
+        # if the file is not present, let's go ahead to write it now
         pass
     if md5.digest() != newdigest:
         open(filepath, 'w').write(content)
 
-def mkcd(path): mkdir(path) and pushd(path)
+
+# TODO: is this used? Can we remove it?
+def mkcd(path):
+    mkdir(path) and pushd(path)
 
 
 def str2bool(v):

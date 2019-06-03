@@ -1,9 +1,11 @@
+# -*- coding: utf8 -*-
 from os.path import join, dirname
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 def read(fname):
-    return open(join(dirname(__file__), fname)).read()
+    with open(join(dirname(__file__), fname)) as f:
+        return f.read()
 
 
 config = {
