@@ -1,4 +1,6 @@
 # -*- coding: utf8 -*-
+from builtins import object
+
 import argparse
 import hashlib
 import os
@@ -10,8 +12,16 @@ cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
 cache_file = os.path.join('czmake_cache.json')
 
 
+if sys.version_info.major == 2:
+    def items(dictionary):
+        return dictionary.iteritems()
+else:
+    def items(dictionary):
+        return dictionary.items()
+
+
 def update_dict(original, updated):
-    for key, value in updated.items():
+    for key, value in items(updated):
         fixed_key = key.replace('-', '_')
         if fixed_key in original and isinstance(value, dict):
             update_dict(original[fixed_key], value)
@@ -132,7 +142,7 @@ def _init():
 pushd, popd = _init()
 
 
-class DirectoryContext():
+class DirectoryContext(object):
     def __init__(self, dirpath):
         self.dirpath = dirpath
 

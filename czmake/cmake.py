@@ -1,8 +1,9 @@
 #!/bin/env python3
 # -*- coding: utf8 -*-
 from argparse import ArgumentParser, REMAINDER
+
 from .build import build, parse_cmake_option
-from .utils import cmake_exe, str2bool
+from .utils import cmake_exe, str2bool, items
 
 
 def run():
@@ -41,7 +42,7 @@ def run():
     optlist = parser.parse_args()
     configuration = {
         key.replace('_', '-'): value
-        for key, value in optlist.__dict__.items()
+        for key, value in items(vars(optlist))
         if value is not None
         and key != 'toolchain_file'
         and key != 'package'

@@ -1,4 +1,6 @@
 # -*- coding: utf8 -*-
+from __future__ import print_function
+
 import argparse
 import json
 import os
@@ -8,9 +10,11 @@ import platform
 from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
+
 from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork, update_dict, \
     cache_file
-from .build import build
+from .build import build, items
+
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +202,7 @@ def configure(configuration, update=False):
     cmd = [cfg['cmake_exe'], '-DCMAKE_MODULE_PATH:PATH=%s' % join(dirname(__file__), 'cmake')]
     if 'generator' in cfg:
         cmd += ['-G', '%s' % (cfg['generator'])]
-    for key, value in cfg["options"].items():
+    for key, value in items(cfg["options"]):
         cmd.append(dump_option(key, value))
     if cfg['build'] and 'extra_args' in cfg:
         cmd += cfg['extra_args']
@@ -221,7 +225,7 @@ def configure_cli(default_configuration=None):
         cfg['extra_args'] = None
     with DirectoryContext(cfg['build_directory']):
         conf = {
-            key: value for key, value in cfg.items()
+            key: value for key, value in items(cfg)
             if key not in {'build', 'build_directory'}
         }
         with open(cache_file, 'w') as f:
