@@ -1,15 +1,27 @@
-import sys
+# -*- coding: utf8 -*-
+from builtins import object
+
+import argparse
+import hashlib
 import os
 import os.path
 import subprocess
-import argparse
-import hashlib
+import sys
 
 cmake_exe = os.environ.get('CZMAKE_CMAKE', 'cmake')
 cache_file = os.path.join('czmake_cache.json')
 
+
+if sys.version_info.major == 2:
+    def items(dictionary):
+        return dictionary.iteritems()
+else:
+    def items(dictionary):
+        return dictionary.items()
+
+
 def update_dict(original, updated):
-    for key, value in updated.items():
+    for key, value in items(updated):
         fixed_key = key.replace('-', '_')
         if fixed_key in original and isinstance(value, dict):
             update_dict(original[fixed_key], value)
@@ -18,15 +30,18 @@ def update_dict(original, updated):
         elif fixed_key in original and value:
             original[fixed_key] = value
 
+
 def fork(*args, **kwargs):
     sys.stdout.write(' '.join(args[0]) + '\n')
     return subprocess.check_call(*args, **kwargs)
+
 
 def dump_option(key, value):
     if isinstance(value, bool):
         return '-D%s=%s' % (key, 'ON' if value else 'OFF')
     else:
         return '-D%s=%s' % (key, value)
+
 
 def parse_option(s):
     eq = s.find('=')
@@ -35,7 +50,7 @@ def parse_option(s):
     colon = s.find(':')
     if colon < 0:
         colon = eq
-        key, value = s[:colon], s[eq+1:]
+        key, value = s[:colon], s[eq + 1:]
         try:
             value = str2bool(value)
         except argparse.ArgumentTypeError:
@@ -44,17 +59,23 @@ def parse_option(s):
         key = s[:colon]
         ty = s[colon + 1:eq].lower()
         if ty == 'BOOL':
-            value = str2bool(s[eq+1])
+            value = str2bool(s[eq + 1])
         else:
-            value = s[eq+1]
+            value = s[eq + 1]
     return key, value
 
+
 def mkdir(path):
+    """Make the directory or do nothing if it already exists.
+
+    Equivalent to Py3-only `os.makedirs(path, exist_ok=True)`.
+    """
     try:
         os.makedirs(path)
     except OSError as e:
         if not os.path.exists(path):
             raise e
+
 
 def write_if_different(filepath, content, bufsize=256 * 256):
     newdigest = hashlib.md5(content.encode()).digest()
@@ -67,11 +88,16 @@ def write_if_different(filepath, content, bufsize=256 * 256):
                 if len(buffer) < bufsize:
                     break
     except FileNotFoundError:
+        # if the file is not present, let's go ahead to write it now
         pass
     if md5.digest() != newdigest:
         open(filepath, 'w').write(content)
 
-def mkcd(path): mkdir(path) and pushd(path)
+
+def mkcd(path):
+    # Note: most likely this function is not used anymore.
+    #       When we will be sure about it, we can remove it.
+    mkdir(path) and pushd(path)
 
 
 def str2bool(v):
@@ -120,7 +146,7 @@ def _init():
 pushd, popd = _init()
 
 
-class DirectoryContext():
+class DirectoryContext(object):
     def __init__(self, dirpath):
         self.dirpath = dirpath
 

@@ -1,3 +1,6 @@
+# -*- coding: utf8 -*-
+from __future__ import print_function
+
 import argparse
 import json
 import os
@@ -7,9 +10,11 @@ import platform
 from multiprocessing import cpu_count
 from os.path import dirname, abspath, join, exists, basename
 from shutil import rmtree
+
 from .utils import DirectoryContext, mkdir, str2bool, cmake_exe, parse_option, dump_option, fork, update_dict, \
     cache_file
-from .build import build
+from .build import build, items
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +58,7 @@ def argv_parse():
     parser.add_argument("-c", "--configuration-name", nargs='*', help="name of the build configuration to use")
     parser.add_argument("--ccache", type=str2bool, nargs='?', const=True, metavar='(true|false)', help="Use ccache")
     parser.add_argument("extra_args", nargs='*', help="extra arguments to pass to CMake or native build system")
-    try: 
+    try:
         import quark
         parser.add_argument("-u", "--update", help="update dependencies using quark", action="store_true")
     except ImportError:
@@ -153,17 +158,17 @@ def parse_cfg(default_configuration=None):
         cfg['generator'] = args.generator
     if args.cmake_exe:
         cfg['cmake_exe'] = args.cmake_exe
-    if not args.cmake_target is None:
+    if args.cmake_target is not None:
         cfg['cmake_target'] = args.cmake_target
     if isinstance(cfg['cmake_target'], str):
         cfg['cmake_target'] = [cfg['cmake_target']]
     if args.package:
         cfg['cmake_target'] = cfg.get('cmake_target', []) + ['package']
-    elif args.package == False and cfg['cmake_target']:
+    elif args.package is False and cfg['cmake_target']:
         cfg['cmake_target'] = [target for target in cfg['cmake_target'] if target != 'package']
     if args.install:
         cfg['cmake_target'] = cfg.get('cmake_target', []) + ['install']
-    elif args.install == False and cfg['cmake_target']:
+    elif args.install is False and cfg['cmake_target']:
         cfg['cmake_target'] = [target for target in cfg['cmake_target'] if target != 'install']
     cfg['extra_args'] = args.extra_args
     cfg['jobs'] = args.jobs
@@ -180,12 +185,12 @@ def parse_cfg(default_configuration=None):
         sys.exit(0)
     else:
         args_dict = vars(args)
-        return args.configuration_name, cfg, {'update' : args_dict.get('update', False)}
+        return args.configuration_name, cfg, {'update': args_dict.get('update', False)}
 
 
 def configure(configuration, update=False):
     if update:
-        import quark
+        import quark  # TODO: this can be removed, if `configure` is not called from outside
         quark.checkout.resolve_dependencies(configuration['source_directory'], options=configuration['options'])
     cfg = configuration
     env = os.environ
@@ -197,7 +202,7 @@ def configure(configuration, update=False):
     cmd = [cfg['cmake_exe'], '-DCMAKE_MODULE_PATH:PATH=%s' % join(dirname(__file__), 'cmake')]
     if 'generator' in cfg:
         cmd += ['-G', '%s' % (cfg['generator'])]
-    for key, value in cfg["options"].items():
+    for key, value in items(cfg["options"]):
         cmd.append(dump_option(key, value))
     if cfg['build'] and 'extra_args' in cfg:
         cmd += cfg['extra_args']
@@ -219,10 +224,14 @@ def configure_cli(default_configuration=None):
     if cfg['build']:
         cfg['extra_args'] = None
     with DirectoryContext(cfg['build_directory']):
-        conf = {key:value for key,value in cfg.items() if key not in {'build', 'build_directory'}}
+        conf = {
+            key: value for key, value in items(cfg)
+            if key not in {'build', 'build_directory'}
+        }
         with open(cache_file, 'w') as f:
             json.dump(conf, f)
     return name, cfg
+
 
 def run():
     configure_cli()
