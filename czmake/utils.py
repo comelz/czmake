@@ -66,7 +66,10 @@ def parse_option(s):
 
 
 def mkdir(path):
-    # TODO: can we directly use os.makedirs?
+    """Make the directory or do nothing if it already exists.
+
+    Equivalent to Py3-only `os.makedirs(path, exist_ok=True)`.
+    """
     try:
         os.makedirs(path)
     except OSError as e:
@@ -91,8 +94,9 @@ def write_if_different(filepath, content, bufsize=256 * 256):
         open(filepath, 'w').write(content)
 
 
-# TODO: is this used? Can we remove it?
 def mkcd(path):
+    # Note: most likely this function is not used anymore.
+    #       When we will be sure about it, we can remove it.
     mkdir(path) and pushd(path)
 
 
